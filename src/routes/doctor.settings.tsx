@@ -9,7 +9,7 @@ import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import { Textarea } from "@/components/ui/textarea";
 import { Button } from "@/components/ui/button";
-import { Loader2, Save, Copy, Upload, Trash2 } from "lucide-react";
+import { Loader2, Save, Copy, Upload, Trash2, MessageCircle, CalendarClock } from "lucide-react";
 import { toast } from "sonner";
 
 export const Route = createFileRoute("/doctor/settings")({
@@ -241,3 +241,88 @@ function ColorField({ label, value, onChange }: { label: string; value: string; 
     </div>
   );
 }
+
+function AdminContactCard() {
+  const [whatsapp, setWhatsapp] = useState<string>("");
+  useEffect(() => {
+    supabase.from("admin_settings").select("whatsapp_number").eq("id", 1).maybeSingle().then(({ data }) => {
+      if (data?.whatsapp_number) setWhatsapp(data.whatsapp_number);
+    });
+    const ch = supabase.channel("admin-settings-doctor")
+      .on("postgres_changes", { event: "UPDATE", schema: "public", table: "admin_settings" }, (payload) => {
+        const w = (payload.new as any)?.whatsapp_number;
+        if (w) setWhatsapp(w);
+      }).subscribe();
+    return () => { supabase.removeChannel(ch); };
+  }, []);
+  if (!whatsapp) return null;
+  const cleaned = whatsapp.replace(/[^\d+]/g, "").replace(/^\+?00/, "+").replace(/^\+/, "");
+  const link = `https://wa.me/${cleaned}?text=${encodeURIComponent("السلام عليكم، أرغب بالتواصل بخصوص اشتراكي في النظام الطبي")}`;
+  return (
+    <Card className="border-success/30 bg-success/5">
+      <CardHeader>
+        <CardTitle className="flex items-center gap-2 text-success">
+          <MessageCircle className="h-5 w-5" /> تواصل مع إدارة النظام
+        </CardTitle>
+        <p className="text-xs text-muted-foreground">للاستفسار عن الاشتراك، التجديد، أو أي مسائل إدارية ومالية</p>
+      </CardHeader>
+      <CardContent className="flex flex-wrap items-center justify-between gap-3">
+        <div>
+          <div className="text-xs text-muted-foreground">واتساب الإدارة</div>
+          <div className="font-mono text-base font-semibold" dir="ltr">{whatsapp}</div>
+        </div>
+        <a href={link} target="_blank" rel="noreferrer">
+          <Button className="bg-success hover:bg-success/90"><MessageCircle className="ml-1 h-4 w-4" />مراسلة عبر واتساب</Button>
+        </a>
+      </CardContent>
+    </Card>
+  );
+}
+
+function SubscriptionCard() {
+  const { user } = useAuth();
+  const [info, setInfo] = useState<{ start: string | null; end: string | null; active: boolean; reason: string | null } | null>(null);
+  useEffect(() => {
+    if (!user) return;
+    const load = () => supabase.from("profiles").select("subscription_start,subscription_end,is_active,deactivation_reason").eq("id", user.id).maybeSingle().then(({ data }) => {
+      if (data) setInfo({ start: data.subscription_start, end: data.subscription_end, active: data.is_active, reason: data.deactivation_reason });
+    });
+    load();
+    const ch = supabase.channel(`subs-${user.id}`)
+      .on("postgres_changes", { event: "UPDATE", schema: "public", table: "profiles", filter: `id=eq.${user.id}` }, load)
+      .subscribe();
+    return () => { supabase.removeChannel(ch); };
+  }, [user]);
+  if (!info) return null;
+  const expired = info.end && new Date(info.end) < new Date();
+  const fmt = (d: string | null) => d ? new Date(d).toLocaleDateString("ar-EG") : "—";
+  return (
+    <Card>
+      <CardHeader>
+        <CardTitle className="flex items-center gap-2"><CalendarClock className="h-5 w-5" />حالة الاشتراك</CardTitle>
+      </CardHeader>
+      <CardContent className="grid gap-3 md:grid-cols-3 text-sm">
+        <div>
+          <div className="text-xs text-muted-foreground">بداية الاشتراك</div>
+          <div className="font-semibold">{fmt(info.start)}</div>
+        </div>
+        <div>
+          <div className="text-xs text-muted-foreground">نهاية الاشتراك</div>
+          <div className="font-semibold">{info.end ? fmt(info.end) : "اشتراك دائم"}</div>
+        </div>
+        <div>
+          <div className="text-xs text-muted-foreground">الحالة</div>
+          <div className={`font-semibold ${!info.active || expired ? "text-destructive" : "text-success"}`}>
+            {!info.active ? "موقوف" : expired ? "منتهي" : "نشط"}
+          </div>
+        </div>
+        {(!info.active || expired) && info.reason && (
+          <div className="md:col-span-3 rounded-md bg-destructive/10 p-3 text-destructive text-xs">
+            <strong>السبب:</strong> {info.reason}
+          </div>
+        )}
+      </CardContent>
+    </Card>
+  );
+}
+
