@@ -61,6 +61,23 @@ export function AuthProvider({ children }: { children: ReactNode }) {
     return () => sub.subscription.unsubscribe();
   }, []);
 
+  // Realtime: react to own profile status changes (approval/rejection) instantly
+  useEffect(() => {
+    if (!session?.user) return;
+    const userId = session.user.id;
+    const channel = supabase
+      .channel(`profile-${userId}`)
+      .on(
+        "postgres_changes",
+        { event: "UPDATE", schema: "public", table: "profiles", filter: `id=eq.${userId}` },
+        (payload) => {
+          setProfile((prev) => ({ ...(prev as Profile), ...(payload.new as Profile) }));
+        }
+      )
+      .subscribe();
+    return () => { supabase.removeChannel(channel); };
+  }, [session?.user?.id]);
+
   const refresh = async () => {
     if (session?.user) await loadUserData(session.user.id);
   };
