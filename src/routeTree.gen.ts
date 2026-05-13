@@ -9,13 +9,20 @@
 // Additionally, you should also exclude this file from your linter and/or formatter to prevent it from being checked or modified.
 
 import { Route as rootRouteImport } from './routes/__root'
+import { Route as SecretaryRouteImport } from './routes/secretary'
 import { Route as PendingRouteImport } from './routes/pending'
 import { Route as AuthRouteImport } from './routes/auth'
 import { Route as AdminRouteImport } from './routes/admin'
 import { Route as IndexRouteImport } from './routes/index'
 import { Route as DoctorIndexRouteImport } from './routes/doctor.index'
 import { Route as DoctorSettingsRouteImport } from './routes/doctor.settings'
+import { Route as DoctorPatientIdRouteImport } from './routes/doctor.patient.$id'
 
+const SecretaryRoute = SecretaryRouteImport.update({
+  id: '/secretary',
+  path: '/secretary',
+  getParentRoute: () => rootRouteImport,
+} as any)
 const PendingRoute = PendingRouteImport.update({
   id: '/pending',
   path: '/pending',
@@ -46,22 +53,31 @@ const DoctorSettingsRoute = DoctorSettingsRouteImport.update({
   path: '/doctor/settings',
   getParentRoute: () => rootRouteImport,
 } as any)
+const DoctorPatientIdRoute = DoctorPatientIdRouteImport.update({
+  id: '/doctor/patient/$id',
+  path: '/doctor/patient/$id',
+  getParentRoute: () => rootRouteImport,
+} as any)
 
 export interface FileRoutesByFullPath {
   '/': typeof IndexRoute
   '/admin': typeof AdminRoute
   '/auth': typeof AuthRoute
   '/pending': typeof PendingRoute
+  '/secretary': typeof SecretaryRoute
   '/doctor/settings': typeof DoctorSettingsRoute
   '/doctor/': typeof DoctorIndexRoute
+  '/doctor/patient/$id': typeof DoctorPatientIdRoute
 }
 export interface FileRoutesByTo {
   '/': typeof IndexRoute
   '/admin': typeof AdminRoute
   '/auth': typeof AuthRoute
   '/pending': typeof PendingRoute
+  '/secretary': typeof SecretaryRoute
   '/doctor/settings': typeof DoctorSettingsRoute
   '/doctor': typeof DoctorIndexRoute
+  '/doctor/patient/$id': typeof DoctorPatientIdRoute
 }
 export interface FileRoutesById {
   __root__: typeof rootRouteImport
@@ -69,8 +85,10 @@ export interface FileRoutesById {
   '/admin': typeof AdminRoute
   '/auth': typeof AuthRoute
   '/pending': typeof PendingRoute
+  '/secretary': typeof SecretaryRoute
   '/doctor/settings': typeof DoctorSettingsRoute
   '/doctor/': typeof DoctorIndexRoute
+  '/doctor/patient/$id': typeof DoctorPatientIdRoute
 }
 export interface FileRouteTypes {
   fileRoutesByFullPath: FileRoutesByFullPath
@@ -79,18 +97,30 @@ export interface FileRouteTypes {
     | '/admin'
     | '/auth'
     | '/pending'
+    | '/secretary'
     | '/doctor/settings'
     | '/doctor/'
+    | '/doctor/patient/$id'
   fileRoutesByTo: FileRoutesByTo
-  to: '/' | '/admin' | '/auth' | '/pending' | '/doctor/settings' | '/doctor'
+  to:
+    | '/'
+    | '/admin'
+    | '/auth'
+    | '/pending'
+    | '/secretary'
+    | '/doctor/settings'
+    | '/doctor'
+    | '/doctor/patient/$id'
   id:
     | '__root__'
     | '/'
     | '/admin'
     | '/auth'
     | '/pending'
+    | '/secretary'
     | '/doctor/settings'
     | '/doctor/'
+    | '/doctor/patient/$id'
   fileRoutesById: FileRoutesById
 }
 export interface RootRouteChildren {
@@ -98,12 +128,21 @@ export interface RootRouteChildren {
   AdminRoute: typeof AdminRoute
   AuthRoute: typeof AuthRoute
   PendingRoute: typeof PendingRoute
+  SecretaryRoute: typeof SecretaryRoute
   DoctorSettingsRoute: typeof DoctorSettingsRoute
   DoctorIndexRoute: typeof DoctorIndexRoute
+  DoctorPatientIdRoute: typeof DoctorPatientIdRoute
 }
 
 declare module '@tanstack/react-router' {
   interface FileRoutesByPath {
+    '/secretary': {
+      id: '/secretary'
+      path: '/secretary'
+      fullPath: '/secretary'
+      preLoaderRoute: typeof SecretaryRouteImport
+      parentRoute: typeof rootRouteImport
+    }
     '/pending': {
       id: '/pending'
       path: '/pending'
@@ -146,6 +185,13 @@ declare module '@tanstack/react-router' {
       preLoaderRoute: typeof DoctorSettingsRouteImport
       parentRoute: typeof rootRouteImport
     }
+    '/doctor/patient/$id': {
+      id: '/doctor/patient/$id'
+      path: '/doctor/patient/$id'
+      fullPath: '/doctor/patient/$id'
+      preLoaderRoute: typeof DoctorPatientIdRouteImport
+      parentRoute: typeof rootRouteImport
+    }
   }
 }
 
@@ -154,8 +200,10 @@ const rootRouteChildren: RootRouteChildren = {
   AdminRoute: AdminRoute,
   AuthRoute: AuthRoute,
   PendingRoute: PendingRoute,
+  SecretaryRoute: SecretaryRoute,
   DoctorSettingsRoute: DoctorSettingsRoute,
   DoctorIndexRoute: DoctorIndexRoute,
+  DoctorPatientIdRoute: DoctorPatientIdRoute,
 }
 export const routeTree = rootRouteImport
   ._addFileChildren(rootRouteChildren)
