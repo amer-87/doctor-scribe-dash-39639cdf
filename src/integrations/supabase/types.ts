@@ -14,16 +14,194 @@ export type Database = {
   }
   public: {
     Tables: {
-      [_ in never]: never
+      doctor_settings: {
+        Row: {
+          clinic_address: string
+          clinic_name: string
+          clinic_phone: string
+          doctor_id: string
+          doctor_name: string
+          specialty: string
+          updated_at: string
+          working_hours: string
+        }
+        Insert: {
+          clinic_address?: string
+          clinic_name?: string
+          clinic_phone?: string
+          doctor_id: string
+          doctor_name?: string
+          specialty?: string
+          updated_at?: string
+          working_hours?: string
+        }
+        Update: {
+          clinic_address?: string
+          clinic_name?: string
+          clinic_phone?: string
+          doctor_id?: string
+          doctor_name?: string
+          specialty?: string
+          updated_at?: string
+          working_hours?: string
+        }
+        Relationships: []
+      }
+      patients: {
+        Row: {
+          added_by: string | null
+          age: number | null
+          chronic_diseases: string | null
+          created_at: string
+          doctor_id: string
+          full_name: string
+          gender: string | null
+          id: string
+          notes: string | null
+          phone: string | null
+          updated_at: string
+        }
+        Insert: {
+          added_by?: string | null
+          age?: number | null
+          chronic_diseases?: string | null
+          created_at?: string
+          doctor_id: string
+          full_name: string
+          gender?: string | null
+          id?: string
+          notes?: string | null
+          phone?: string | null
+          updated_at?: string
+        }
+        Update: {
+          added_by?: string | null
+          age?: number | null
+          chronic_diseases?: string | null
+          created_at?: string
+          doctor_id?: string
+          full_name?: string
+          gender?: string | null
+          id?: string
+          notes?: string | null
+          phone?: string | null
+          updated_at?: string
+        }
+        Relationships: []
+      }
+      prescriptions: {
+        Row: {
+          content: string
+          created_at: string
+          doctor_id: string
+          id: string
+          patient_id: string
+          updated_at: string
+        }
+        Insert: {
+          content?: string
+          created_at?: string
+          doctor_id: string
+          id?: string
+          patient_id: string
+          updated_at?: string
+        }
+        Update: {
+          content?: string
+          created_at?: string
+          doctor_id?: string
+          id?: string
+          patient_id?: string
+          updated_at?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "prescriptions_patient_id_fkey"
+            columns: ["patient_id"]
+            isOneToOne: false
+            referencedRelation: "patients"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
+      profiles: {
+        Row: {
+          clinic_name: string | null
+          created_at: string
+          doctor_id: string | null
+          email: string
+          full_name: string
+          id: string
+          phone: string | null
+          rejection_reason: string | null
+          specialty: string | null
+          status: Database["public"]["Enums"]["account_status"]
+          updated_at: string
+        }
+        Insert: {
+          clinic_name?: string | null
+          created_at?: string
+          doctor_id?: string | null
+          email: string
+          full_name: string
+          id: string
+          phone?: string | null
+          rejection_reason?: string | null
+          specialty?: string | null
+          status?: Database["public"]["Enums"]["account_status"]
+          updated_at?: string
+        }
+        Update: {
+          clinic_name?: string | null
+          created_at?: string
+          doctor_id?: string | null
+          email?: string
+          full_name?: string
+          id?: string
+          phone?: string | null
+          rejection_reason?: string | null
+          specialty?: string | null
+          status?: Database["public"]["Enums"]["account_status"]
+          updated_at?: string
+        }
+        Relationships: []
+      }
+      user_roles: {
+        Row: {
+          id: string
+          role: Database["public"]["Enums"]["app_role"]
+          user_id: string
+        }
+        Insert: {
+          id?: string
+          role: Database["public"]["Enums"]["app_role"]
+          user_id: string
+        }
+        Update: {
+          id?: string
+          role?: Database["public"]["Enums"]["app_role"]
+          user_id?: string
+        }
+        Relationships: []
+      }
     }
     Views: {
       [_ in never]: never
     }
     Functions: {
-      [_ in never]: never
+      get_effective_doctor_id: { Args: { _user_id: string }; Returns: string }
+      has_role: {
+        Args: {
+          _role: Database["public"]["Enums"]["app_role"]
+          _user_id: string
+        }
+        Returns: boolean
+      }
+      is_approved: { Args: { _user_id: string }; Returns: boolean }
     }
     Enums: {
-      [_ in never]: never
+      account_status: "pending" | "approved" | "rejected"
+      app_role: "admin" | "doctor" | "secretary"
     }
     CompositeTypes: {
       [_ in never]: never
@@ -150,6 +328,9 @@ export type CompositeTypes<
 
 export const Constants = {
   public: {
-    Enums: {},
+    Enums: {
+      account_status: ["pending", "approved", "rejected"],
+      app_role: ["admin", "doctor", "secretary"],
+    },
   },
 } as const
