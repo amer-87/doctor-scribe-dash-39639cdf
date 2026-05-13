@@ -75,15 +75,19 @@ function Settings() {
   const onUpload = async (e: React.ChangeEvent<HTMLInputElement>) => {
     const file = e.target.files?.[0];
     if (!file || !user) return;
+    const allowed = ["image/png", "image/svg+xml"];
+    if (!allowed.includes(file.type)) {
+      toast.error("يُسمح فقط بصيغ PNG أو SVG (تدعمان الشفافية)");
+      return;
+    }
     if (file.size > 2 * 1024 * 1024) { toast.error("الحد الأقصى 2 ميجابايت"); return; }
     setUploading(true);
-    const ext = file.name.split(".").pop() || "png";
+    const ext = file.type === "image/svg+xml" ? "svg" : "png";
     const path = `${user.id}/logo-${Date.now()}.${ext}`;
-    const { error: upErr } = await supabase.storage.from("logos").upload(path, file, { upsert: true, cacheControl: "3600" });
+    const { error: upErr } = await supabase.storage.from("logos").upload(path, file, { upsert: true, cacheControl: "3600", contentType: file.type });
     if (upErr) { toast.error(upErr.message); setUploading(false); return; }
     const { data } = supabase.storage.from("logos").getPublicUrl(path);
     set("logo_url", data.publicUrl);
-    // Auto-save logo URL
     await supabase.from("doctor_settings").upsert({ doctor_id: user.id, ...form, logo_url: data.publicUrl });
     setUploading(false);
     toast.success("تم رفع الشعار");
@@ -125,24 +129,41 @@ function Settings() {
         </Card>
 
         <Card>
-          <CardHeader><CardTitle>شعار العيادة</CardTitle></CardHeader>
+          <CardHeader>
+            <CardTitle>شعار العيادة (شفاف)</CardTitle>
+            <p className="text-xs text-muted-foreground">يُرجى رفع شعار بصيغة PNG أو SVG شفافة الخلفية ليندمج بشكل احترافي مع الوصفة</p>
+          </CardHeader>
           <CardContent className="flex flex-wrap items-center gap-4">
-            <div className="flex h-24 w-24 items-center justify-center rounded-lg border bg-muted overflow-hidden">
-              {form.logo_url ? <img src={form.logo_url} alt="logo" className="h-full w-full object-contain" /> : <span className="text-xs text-muted-foreground">لا يوجد</span>}
+            <div
+              className="flex h-28 w-28 items-center justify-center overflow-hidden rounded-lg"
+              style={{
+                backgroundImage:
+                  "linear-gradient(45deg, hsl(var(--muted)) 25%, transparent 25%, transparent 75%, hsl(var(--muted)) 75%), linear-gradient(45deg, hsl(var(--muted)) 25%, transparent 25%, transparent 75%, hsl(var(--muted)) 75%)",
+                backgroundSize: "12px 12px",
+                backgroundPosition: "0 0, 6px 6px",
+              }}
+              title="معاينة على خلفية شفافة"
+            >
+              {form.logo_url ? <img src={form.logo_url} alt="logo" className="h-full w-full object-contain p-2" /> : <span className="text-xs text-muted-foreground">لا يوجد</span>}
             </div>
             <div className="flex flex-col gap-2">
-              <input ref={fileRef} type="file" accept="image/*" hidden onChange={onUpload} />
+              <input ref={fileRef} type="file" accept="image/png,image/svg+xml" hidden onChange={onUpload} />
               <Button variant="outline" onClick={() => fileRef.current?.click()} disabled={uploading}>
                 {uploading ? <Loader2 className="ml-1 h-4 w-4 animate-spin" /> : <Upload className="ml-1 h-4 w-4" />}
-                رفع شعار جديد
+                رفع شعار شفاف (PNG / SVG)
               </Button>
               {form.logo_url && (
                 <Button variant="ghost" onClick={removeLogo}><Trash2 className="ml-1 h-4 w-4" />إزالة</Button>
               )}
-              <p className="text-xs text-muted-foreground">PNG/JPG، حتى 2MB</p>
+              <p className="text-xs text-muted-foreground">PNG أو SVG شفاف فقط، حتى 2MB</p>
             </div>
           </CardContent>
         </Card>
+
+        <AdminContactCard />
+
+        <SubscriptionCard />
+
 
         <Card>
           <CardHeader><CardTitle>تخصيص الوصفة الطبية</CardTitle></CardHeader>
