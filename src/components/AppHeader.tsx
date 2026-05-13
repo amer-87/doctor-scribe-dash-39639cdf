@@ -1,6 +1,6 @@
 import { Link, useNavigate } from "@tanstack/react-router";
 import { Button } from "@/components/ui/button";
-import { Moon, Sun, LogOut, Stethoscope, Settings, Users, ShieldCheck } from "lucide-react";
+import { Moon, Sun, LogOut, Stethoscope, Settings, Users, ShieldCheck, KeyRound } from "lucide-react";
 import { useAuth } from "@/hooks/use-auth";
 import { useTheme } from "@/hooks/use-theme";
 
@@ -48,6 +48,9 @@ export function AppHeader() {
               <Link to="/secretary"><Users className="ml-1 h-4 w-4" />السكرتير</Link>
             </Button>
           )}
+          <Button variant="ghost" size="sm" asChild>
+            <Link to="/account"><KeyRound className="ml-1 h-4 w-4" />الحساب</Link>
+          </Button>
           <Button variant="ghost" size="icon" onClick={toggle} aria-label="theme">
             {theme === "dark" ? <Sun className="h-4 w-4" /> : <Moon className="h-4 w-4" />}
           </Button>

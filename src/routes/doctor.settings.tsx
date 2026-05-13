@@ -9,7 +9,7 @@ import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import { Textarea } from "@/components/ui/textarea";
 import { Button } from "@/components/ui/button";
-import { Loader2, Save, Copy, Upload, Trash2 } from "lucide-react";
+import { Loader2, Save, Copy, Upload, Trash2, MessageCircle, CalendarClock } from "lucide-react";
 import { toast } from "sonner";
 
 export const Route = createFileRoute("/doctor/settings")({
@@ -75,15 +75,19 @@ function Settings() {
   const onUpload = async (e: React.ChangeEvent<HTMLInputElement>) => {
     const file = e.target.files?.[0];
     if (!file || !user) return;
+    const allowed = ["image/png", "image/svg+xml"];
+    if (!allowed.includes(file.type)) {
+      toast.error("يُسمح فقط بصيغ PNG أو SVG (تدعمان الشفافية)");
+      return;
+    }
     if (file.size > 2 * 1024 * 1024) { toast.error("الحد الأقصى 2 ميجابايت"); return; }
     setUploading(true);
-    const ext = file.name.split(".").pop() || "png";
+    const ext = file.type === "image/svg+xml" ? "svg" : "png";
     const path = `${user.id}/logo-${Date.now()}.${ext}`;
-    const { error: upErr } = await supabase.storage.from("logos").upload(path, file, { upsert: true, cacheControl: "3600" });
+    const { error: upErr } = await supabase.storage.from("logos").upload(path, file, { upsert: true, cacheControl: "3600", contentType: file.type });
     if (upErr) { toast.error(upErr.message); setUploading(false); return; }
     const { data } = supabase.storage.from("logos").getPublicUrl(path);
     set("logo_url", data.publicUrl);
-    // Auto-save logo URL
     await supabase.from("doctor_settings").upsert({ doctor_id: user.id, ...form, logo_url: data.publicUrl });
     setUploading(false);
     toast.success("تم رفع الشعار");
@@ -125,24 +129,41 @@ function Settings() {
         </Card>
 
         <Card>
-          <CardHeader><CardTitle>شعار العيادة</CardTitle></CardHeader>
+          <CardHeader>
+            <CardTitle>شعار العيادة (شفاف)</CardTitle>
+            <p className="text-xs text-muted-foreground">يُرجى رفع شعار بصيغة PNG أو SVG شفافة الخلفية ليندمج بشكل احترافي مع الوصفة</p>
+          </CardHeader>
           <CardContent className="flex flex-wrap items-center gap-4">
-            <div className="flex h-24 w-24 items-center justify-center rounded-lg border bg-muted overflow-hidden">
-              {form.logo_url ? <img src={form.logo_url} alt="logo" className="h-full w-full object-contain" /> : <span className="text-xs text-muted-foreground">لا يوجد</span>}
+            <div
+              className="flex h-28 w-28 items-center justify-center overflow-hidden rounded-lg"
+              style={{
+                backgroundImage:
+                  "linear-gradient(45deg, hsl(var(--muted)) 25%, transparent 25%, transparent 75%, hsl(var(--muted)) 75%), linear-gradient(45deg, hsl(var(--muted)) 25%, transparent 25%, transparent 75%, hsl(var(--muted)) 75%)",
+                backgroundSize: "12px 12px",
+                backgroundPosition: "0 0, 6px 6px",
+              }}
+              title="معاينة على خلفية شفافة"
+            >
+              {form.logo_url ? <img src={form.logo_url} alt="logo" className="h-full w-full object-contain p-2" /> : <span className="text-xs text-muted-foreground">لا يوجد</span>}
             </div>
             <div className="flex flex-col gap-2">
-              <input ref={fileRef} type="file" accept="image/*" hidden onChange={onUpload} />
+              <input ref={fileRef} type="file" accept="image/png,image/svg+xml" hidden onChange={onUpload} />
               <Button variant="outline" onClick={() => fileRef.current?.click()} disabled={uploading}>
                 {uploading ? <Loader2 className="ml-1 h-4 w-4 animate-spin" /> : <Upload className="ml-1 h-4 w-4" />}
-                رفع شعار جديد
+                رفع شعار شفاف (PNG / SVG)
               </Button>
               {form.logo_url && (
                 <Button variant="ghost" onClick={removeLogo}><Trash2 className="ml-1 h-4 w-4" />إزالة</Button>
               )}
-              <p className="text-xs text-muted-foreground">PNG/JPG، حتى 2MB</p>
+              <p className="text-xs text-muted-foreground">PNG أو SVG شفاف فقط، حتى 2MB</p>
             </div>
           </CardContent>
         </Card>
+
+        <AdminContactCard />
+
+        <SubscriptionCard />
+
 
         <Card>
           <CardHeader><CardTitle>تخصيص الوصفة الطبية</CardTitle></CardHeader>
@@ -220,3 +241,88 @@ function ColorField({ label, value, onChange }: { label: string; value: string; 
     </div>
   );
 }
+
+function AdminContactCard() {
+  const [whatsapp, setWhatsapp] = useState<string>("");
+  useEffect(() => {
+    supabase.from("admin_settings").select("whatsapp_number").eq("id", 1).maybeSingle().then(({ data }) => {
+      if (data?.whatsapp_number) setWhatsapp(data.whatsapp_number);
+    });
+    const ch = supabase.channel("admin-settings-doctor")
+      .on("postgres_changes", { event: "UPDATE", schema: "public", table: "admin_settings" }, (payload) => {
+        const w = (payload.new as any)?.whatsapp_number;
+        if (w) setWhatsapp(w);
+      }).subscribe();
+    return () => { supabase.removeChannel(ch); };
+  }, []);
+  if (!whatsapp) return null;
+  const cleaned = whatsapp.replace(/[^\d+]/g, "").replace(/^\+?00/, "+").replace(/^\+/, "");
+  const link = `https://wa.me/${cleaned}?text=${encodeURIComponent("السلام عليكم، أرغب بالتواصل بخصوص اشتراكي في النظام الطبي")}`;
+  return (
+    <Card className="border-success/30 bg-success/5">
+      <CardHeader>
+        <CardTitle className="flex items-center gap-2 text-success">
+          <MessageCircle className="h-5 w-5" /> تواصل مع إدارة النظام
+        </CardTitle>
+        <p className="text-xs text-muted-foreground">للاستفسار عن الاشتراك، التجديد، أو أي مسائل إدارية ومالية</p>
+      </CardHeader>
+      <CardContent className="flex flex-wrap items-center justify-between gap-3">
+        <div>
+          <div className="text-xs text-muted-foreground">واتساب الإدارة</div>
+          <div className="font-mono text-base font-semibold" dir="ltr">{whatsapp}</div>
+        </div>
+        <a href={link} target="_blank" rel="noreferrer">
+          <Button className="bg-success hover:bg-success/90"><MessageCircle className="ml-1 h-4 w-4" />مراسلة عبر واتساب</Button>
+        </a>
+      </CardContent>
+    </Card>
+  );
+}
+
+function SubscriptionCard() {
+  const { user } = useAuth();
+  const [info, setInfo] = useState<{ start: string | null; end: string | null; active: boolean; reason: string | null } | null>(null);
+  useEffect(() => {
+    if (!user) return;
+    const load = () => supabase.from("profiles").select("subscription_start,subscription_end,is_active,deactivation_reason").eq("id", user.id).maybeSingle().then(({ data }) => {
+      if (data) setInfo({ start: data.subscription_start, end: data.subscription_end, active: data.is_active, reason: data.deactivation_reason });
+    });
+    load();
+    const ch = supabase.channel(`subs-${user.id}`)
+      .on("postgres_changes", { event: "UPDATE", schema: "public", table: "profiles", filter: `id=eq.${user.id}` }, load)
+      .subscribe();
+    return () => { supabase.removeChannel(ch); };
+  }, [user]);
+  if (!info) return null;
+  const expired = info.end && new Date(info.end) < new Date();
+  const fmt = (d: string | null) => d ? new Date(d).toLocaleDateString("ar-EG") : "—";
+  return (
+    <Card>
+      <CardHeader>
+        <CardTitle className="flex items-center gap-2"><CalendarClock className="h-5 w-5" />حالة الاشتراك</CardTitle>
+      </CardHeader>
+      <CardContent className="grid gap-3 md:grid-cols-3 text-sm">
+        <div>
+          <div className="text-xs text-muted-foreground">بداية الاشتراك</div>
+          <div className="font-semibold">{fmt(info.start)}</div>
+        </div>
+        <div>
+          <div className="text-xs text-muted-foreground">نهاية الاشتراك</div>
+          <div className="font-semibold">{info.end ? fmt(info.end) : "اشتراك دائم"}</div>
+        </div>
+        <div>
+          <div className="text-xs text-muted-foreground">الحالة</div>
+          <div className={`font-semibold ${!info.active || expired ? "text-destructive" : "text-success"}`}>
+            {!info.active ? "موقوف" : expired ? "منتهي" : "نشط"}
+          </div>
+        </div>
+        {(!info.active || expired) && info.reason && (
+          <div className="md:col-span-3 rounded-md bg-destructive/10 p-3 text-destructive text-xs">
+            <strong>السبب:</strong> {info.reason}
+          </div>
+        )}
+      </CardContent>
+    </Card>
+  );
+}
+

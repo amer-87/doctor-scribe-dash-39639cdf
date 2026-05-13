@@ -7,8 +7,9 @@ import { useAuth } from "@/hooks/use-auth";
 import { Card } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
 import { Textarea } from "@/components/ui/textarea";
-import { ArrowRight, Printer, Save, Download, Loader2 } from "lucide-react";
+import { ArrowRight, Printer, Save, Download, Loader2, ShieldCheck } from "lucide-react";
 import { toast } from "sonner";
+import { QRCodeSVG } from "qrcode.react";
 
 export const Route = createFileRoute("/doctor/patient/$id")({
   component: () => <RequireAuth allow={["doctor"]}><PrescriptionPage /></RequireAuth>,
@@ -95,23 +96,44 @@ function PrescriptionPage() {
           </div>
         </div>
 
-        <Card className="print-area overflow-hidden shadow-elegant" style={{ background: t.bg, color: t.text }}>
-          {/* HEADER */}
-          <div className="p-6" style={{ background: `linear-gradient(135deg, ${t.header}, ${t.accent})`, color: "#ffffff" }}>
-            <div className="flex flex-wrap items-start justify-between gap-4">
-              <div className="flex items-center gap-3">
+        <Card className="print-area overflow-hidden shadow-elegant relative" style={{ background: t.bg, color: t.text }}>
+          {/* Watermark logo (subtle, behind content) */}
+          {settings?.logo_url && (
+            <img
+              src={settings.logo_url}
+              alt=""
+              aria-hidden
+              className="pointer-events-none absolute inset-0 m-auto h-[60%] w-auto max-w-[60%] object-contain opacity-[0.04]"
+            />
+          )}
+
+          {/* HEADER — logo blends transparently into the gradient */}
+          <div
+            className="relative p-6"
+            style={{ background: `linear-gradient(135deg, ${t.header}, ${t.accent})`, color: "#ffffff" }}
+          >
+            <div className="flex flex-wrap items-center justify-between gap-4">
+              <div className="flex items-center gap-4">
                 {settings?.logo_url && (
-                  <img src={settings.logo_url} alt="logo" className="h-16 w-16 rounded-lg bg-white/95 object-contain p-1.5 shadow" />
+                  <img
+                    src={settings.logo_url}
+                    alt="logo"
+                    className="h-20 w-20 object-contain drop-shadow-lg"
+                    style={{ filter: "drop-shadow(0 2px 4px rgba(0,0,0,0.25))" }}
+                  />
                 )}
                 <div>
-                  <div className="text-xs opacity-80">الطبيب</div>
-                  <div className="text-xl font-bold">د. {settings?.doctor_name || "—"}</div>
+                  <div className="text-[10px] uppercase tracking-widest opacity-75">Doctor</div>
+                  <div className="text-2xl font-extrabold leading-tight">د. {settings?.doctor_name || "—"}</div>
                   <div className="text-sm opacity-90">{settings?.specialty || ""}</div>
                 </div>
               </div>
               <div className="text-left">
-                <div className="text-xs opacity-80">التاريخ</div>
+                <div className="text-[10px] uppercase tracking-widest opacity-75">Date</div>
                 <div className="font-semibold" dir="ltr">{new Date().toLocaleDateString("ar-EG")}</div>
+                {settings?.clinic_name && (
+                  <div className="mt-1 text-xs opacity-90">{settings.clinic_name}</div>
+                )}
               </div>
             </div>
           </div>
@@ -157,16 +179,39 @@ function PrescriptionPage() {
             </div>
           </div>
 
-          {/* CLINIC FOOTER */}
+          {/* CLINIC FOOTER + QR */}
           <div
-            className="border-t p-4 text-center text-sm"
+            className="relative border-t p-4"
             style={{ background: `${t.accent}08`, borderColor: `${t.accent}30` }}
           >
-            <div className="font-semibold">{settings?.clinic_name || ""}</div>
-            <div className="mt-1 opacity-70">{settings?.clinic_address || ""}</div>
-            <div className="mt-1 flex flex-wrap justify-center gap-4 text-xs opacity-70">
-              {settings?.clinic_phone && <span>📞 <span dir="ltr">{settings.clinic_phone}</span></span>}
-              {settings?.working_hours && <span>🕐 {settings.working_hours}</span>}
+            <div className="flex flex-wrap items-center justify-between gap-4">
+              <div className="flex-1 min-w-[200px] text-center sm:text-right">
+                <div className="font-semibold">{settings?.clinic_name || ""}</div>
+                <div className="mt-1 text-xs opacity-70">{settings?.clinic_address || ""}</div>
+                <div className="mt-1 flex flex-wrap justify-center gap-3 text-xs opacity-70 sm:justify-start">
+                  {settings?.clinic_phone && <span>📞 <span dir="ltr">{settings.clinic_phone}</span></span>}
+                  {settings?.working_hours && <span>🕐 {settings.working_hours}</span>}
+                </div>
+              </div>
+              {prescriptionId ? (
+                <div className="flex flex-col items-center gap-1 rounded-md bg-white p-2" style={{ border: `1px solid ${t.accent}30` }}>
+                  <QRCodeSVG
+                    value={`${typeof window !== "undefined" ? window.location.origin : ""}/verify/${prescriptionId}`}
+                    size={84}
+                    level="M"
+                    includeMargin={false}
+                    fgColor={t.accent}
+                  />
+                  <div className="flex items-center gap-1 text-[9px] text-slate-600">
+                    <ShieldCheck className="h-3 w-3" />
+                    <span>تحقق من الوصفة</span>
+                  </div>
+                </div>
+              ) : (
+                <div className="flex h-[100px] w-[100px] items-center justify-center rounded-md border-2 border-dashed text-[9px] text-muted-foreground no-print" style={{ borderColor: `${t.accent}30` }}>
+                  احفظ الوصفة<br />ليظهر QR
+                </div>
+              )}
             </div>
           </div>
         </Card>

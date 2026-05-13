@@ -14,6 +14,24 @@ export type Database = {
   }
   public: {
     Tables: {
+      admin_settings: {
+        Row: {
+          id: number
+          updated_at: string
+          whatsapp_number: string | null
+        }
+        Insert: {
+          id?: number
+          updated_at?: string
+          whatsapp_number?: string | null
+        }
+        Update: {
+          id?: number
+          updated_at?: string
+          whatsapp_number?: string | null
+        }
+        Relationships: []
+      }
       doctor_settings: {
         Row: {
           clinic_address: string
@@ -62,6 +80,36 @@ export type Database = {
           theme_text?: string
           updated_at?: string
           working_hours?: string
+        }
+        Relationships: []
+      }
+      login_logs: {
+        Row: {
+          created_at: string
+          device_label: string | null
+          email: string | null
+          id: string
+          ip_hint: string | null
+          user_agent: string | null
+          user_id: string
+        }
+        Insert: {
+          created_at?: string
+          device_label?: string | null
+          email?: string | null
+          id?: string
+          ip_hint?: string | null
+          user_agent?: string | null
+          user_id: string
+        }
+        Update: {
+          created_at?: string
+          device_label?: string | null
+          email?: string | null
+          id?: string
+          ip_hint?: string | null
+          user_agent?: string | null
+          user_id?: string
         }
         Relationships: []
       }
@@ -146,40 +194,52 @@ export type Database = {
         Row: {
           clinic_name: string | null
           created_at: string
+          deactivation_reason: string | null
           doctor_id: string | null
           email: string
           full_name: string
           id: string
+          is_active: boolean
           phone: string | null
           rejection_reason: string | null
           specialty: string | null
           status: Database["public"]["Enums"]["account_status"]
+          subscription_end: string | null
+          subscription_start: string | null
           updated_at: string
         }
         Insert: {
           clinic_name?: string | null
           created_at?: string
+          deactivation_reason?: string | null
           doctor_id?: string | null
           email: string
           full_name: string
           id: string
+          is_active?: boolean
           phone?: string | null
           rejection_reason?: string | null
           specialty?: string | null
           status?: Database["public"]["Enums"]["account_status"]
+          subscription_end?: string | null
+          subscription_start?: string | null
           updated_at?: string
         }
         Update: {
           clinic_name?: string | null
           created_at?: string
+          deactivation_reason?: string | null
           doctor_id?: string | null
           email?: string
           full_name?: string
           id?: string
+          is_active?: boolean
           phone?: string | null
           rejection_reason?: string | null
           specialty?: string | null
           status?: Database["public"]["Enums"]["account_status"]
+          subscription_end?: string | null
+          subscription_start?: string | null
           updated_at?: string
         }
         Relationships: []
@@ -207,6 +267,7 @@ export type Database = {
       [_ in never]: never
     }
     Functions: {
+      can_write: { Args: { _user_id: string }; Returns: boolean }
       get_effective_doctor_id: { Args: { _user_id: string }; Returns: string }
       has_role: {
         Args: {
@@ -216,6 +277,19 @@ export type Database = {
         Returns: boolean
       }
       is_approved: { Args: { _user_id: string }; Returns: boolean }
+      is_subscription_valid: { Args: { _user_id: string }; Returns: boolean }
+      verify_prescription: {
+        Args: { _id: string }
+        Returns: {
+          clinic_name: string
+          created_at: string
+          doctor_name: string
+          id: string
+          is_valid: boolean
+          patient_name: string
+          specialty: string
+        }[]
+      }
     }
     Enums: {
       account_status: "pending" | "approved" | "rejected"

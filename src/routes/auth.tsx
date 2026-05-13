@@ -44,13 +44,25 @@ function AuthPage() {
     }
   }, [signupRole]);
 
+  const logLogin = async (userId: string, email: string) => {
+    const ua = typeof navigator !== "undefined" ? navigator.userAgent : "";
+    const isMobile = /Mobile|Android|iPhone|iPad/i.test(ua);
+    const browser = /Chrome/i.test(ua) ? "Chrome" : /Firefox/i.test(ua) ? "Firefox" : /Safari/i.test(ua) ? "Safari" : /Edge/i.test(ua) ? "Edge" : "Browser";
+    const os = /Windows/i.test(ua) ? "Windows" : /Mac/i.test(ua) ? "macOS" : /Android/i.test(ua) ? "Android" : /iPhone|iPad/i.test(ua) ? "iOS" : /Linux/i.test(ua) ? "Linux" : "Unknown OS";
+    const device_label = `${isMobile ? "📱" : "💻"} ${browser} • ${os}`;
+    await supabase.from("login_logs").insert({ user_id: userId, email, user_agent: ua, device_label });
+  };
+
   const handleLogin = async (e: React.FormEvent) => {
     e.preventDefault();
     setLoginLoading(true);
-    const { error } = await supabase.auth.signInWithPassword({ email: loginEmail, password: loginPwd });
+    const { data, error } = await supabase.auth.signInWithPassword({ email: loginEmail, password: loginPwd });
     setLoginLoading(false);
     if (error) toast.error(error.message);
-    else { toast.success("تم تسجيل الدخول"); nav({ to: "/" }); }
+    else {
+      if (data.user) await logLogin(data.user.id, data.user.email ?? loginEmail);
+      toast.success("تم تسجيل الدخول"); nav({ to: "/" });
+    }
   };
 
   const handleSignup = async (e: React.FormEvent) => {
@@ -78,8 +90,8 @@ function AuthPage() {
     if (error) toast.error(error.message);
     else {
       toast.success("تم إنشاء الحساب. الحساب بانتظار الموافقة.");
-      // Auto-login since auto-confirm is on
-      await supabase.auth.signInWithPassword({ email, password: pwd });
+      const { data: signed } = await supabase.auth.signInWithPassword({ email, password: pwd });
+      if (signed.user) await logLogin(signed.user.id, signed.user.email ?? email);
       nav({ to: "/" });
     }
   };
