@@ -39,7 +39,10 @@ export type Database = {
           clinic_phone: string
           doctor_id: string
           doctor_name: string
+          font_size: number
+          footer_note: string
           logo_url: string | null
+          qr_size: number
           rx_prefix: string
           specialty: string
           theme_accent: string
@@ -55,7 +58,10 @@ export type Database = {
           clinic_phone?: string
           doctor_id: string
           doctor_name?: string
+          font_size?: number
+          footer_note?: string
           logo_url?: string | null
+          qr_size?: number
           rx_prefix?: string
           specialty?: string
           theme_accent?: string
@@ -71,7 +77,10 @@ export type Database = {
           clinic_phone?: string
           doctor_id?: string
           doctor_name?: string
+          font_size?: number
+          footer_note?: string
           logo_url?: string | null
+          qr_size?: number
           rx_prefix?: string
           specialty?: string
           theme_accent?: string

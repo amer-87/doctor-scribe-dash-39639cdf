@@ -21,6 +21,7 @@ interface Settings {
   clinic_address: string; clinic_phone: string; working_hours: string;
   logo_url: string | null; rx_prefix: string;
   theme_header: string; theme_accent: string; theme_bg: string; theme_text: string;
+  font_size?: number; qr_size?: number; footer_note?: string;
 }
 
 function PrescriptionPage() {
@@ -173,8 +174,8 @@ function PrescriptionPage() {
                 value={body}
                 onChange={(e) => setBody(e.target.value)}
                 placeholder="Write medications, dosage, instructions..."
-                className="min-h-[280px] resize-none rounded-none border-0 font-mono text-base leading-relaxed focus-visible:ring-0"
-                style={{ background: t.bg, color: t.text, textAlign: "left" }}
+                className="min-h-[280px] resize-none rounded-none border-0 font-mono leading-relaxed focus-visible:ring-0"
+                style={{ background: t.bg, color: t.text, textAlign: "left", fontSize: `${settings?.font_size || 16}px` }}
               />
             </div>
           </div>
@@ -192,12 +193,13 @@ function PrescriptionPage() {
                   {settings?.clinic_phone && <span>📞 <span dir="ltr">{settings.clinic_phone}</span></span>}
                   {settings?.working_hours && <span>🕐 {settings.working_hours}</span>}
                 </div>
+                {settings?.footer_note && <div className="mt-2 text-xs italic opacity-80">{settings.footer_note}</div>}
               </div>
               {prescriptionId ? (
                 <div className="flex flex-col items-center gap-1 rounded-md bg-white p-2" style={{ border: `1px solid ${t.accent}30` }}>
                   <QRCodeSVG
                     value={`${typeof window !== "undefined" ? window.location.origin : ""}/verify/${prescriptionId}`}
-                    size={84}
+                    size={settings?.qr_size || 84}
                     level="M"
                     includeMargin={false}
                     fgColor={t.accent}
