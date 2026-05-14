@@ -1,0 +1,5 @@
+
+ALTER TABLE public.doctor_settings
+  ADD COLUMN IF NOT EXISTS font_size integer NOT NULL DEFAULT 16,
+  ADD COLUMN IF NOT EXISTS qr_size integer NOT NULL DEFAULT 84,
+  ADD COLUMN IF NOT EXISTS footer_note text NOT NULL DEFAULT '';
