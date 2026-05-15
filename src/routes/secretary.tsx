@@ -22,17 +22,19 @@ function SecretaryPage() {
   const nav = useNavigate();
   const [count, setCount] = useState(0);
   const [submitting, setSubmitting] = useState(false);
+  const todayStr = new Date().toISOString().slice(0, 10);
   const [form, setForm] = useState({
     full_name: "", age: "", gender: "", phone: "", chronic_diseases: "", notes: "",
+    appointment_date: todayStr, appointment_time: "",
   });
 
   const doctorId = profile?.doctor_id;
 
   const loadCount = async () => {
     if (!doctorId) return;
-    const today = new Date(); today.setHours(0, 0, 0, 0);
+    const today = new Date().toISOString().slice(0, 10);
     const { count: c } = await supabase.from("patients").select("*", { count: "exact", head: true })
-      .eq("doctor_id", doctorId).gte("created_at", today.toISOString());
+      .eq("doctor_id", doctorId).eq("appointment_date", today);
     setCount(c ?? 0);
   };
 
@@ -57,12 +59,15 @@ function SecretaryPage() {
       phone: form.phone || null,
       chronic_diseases: form.chronic_diseases || null,
       notes: form.notes || null,
+      appointment_date: form.appointment_date || todayStr,
+      appointment_time: form.appointment_time || null,
+      status: "pending",
     });
     setSubmitting(false);
     if (error) toast.error(error.message);
     else {
-      toast.success("تم إضافة المراجع — يظهر فوراً عند الطبيب");
-      setForm({ full_name: "", age: "", gender: "", phone: "", chronic_diseases: "", notes: "" });
+      toast.success("تم إضافة الموعد — يظهر فوراً عند الطبيب");
+      setForm({ full_name: "", age: "", gender: "", phone: "", chronic_diseases: "", notes: "", appointment_date: todayStr, appointment_time: "" });
     }
   };
 
@@ -81,10 +86,21 @@ function SecretaryPage() {
         </div>
 
         <Card className="shadow-elegant">
-          <CardHeader><CardTitle className="flex items-center gap-2"><UserPlus className="h-5 w-5" />إضافة مراجع جديد</CardTitle></CardHeader>
+          <CardHeader><CardTitle className="flex items-center gap-2"><UserPlus className="h-5 w-5" />حجز موعد / إضافة مراجع</CardTitle></CardHeader>
           <CardContent>
             <form onSubmit={submit} className="grid gap-3 md:grid-cols-2">
               <div className="md:col-span-2"><Label>الاسم الكامل *</Label><Input required value={form.full_name} onChange={(e) => setForm({ ...form, full_name: e.target.value })} /></div>
+              <div>
+                <Label>تاريخ الموعد *</Label>
+                <Input type="date" required value={form.appointment_date} onChange={(e) => setForm({ ...form, appointment_date: e.target.value })} />
+                <div className="mt-1 flex flex-wrap gap-1">
+                  <Button type="button" size="sm" variant="outline" onClick={() => setForm({ ...form, appointment_date: todayStr })}>اليوم</Button>
+                  <Button type="button" size="sm" variant="outline" onClick={() => { const d = new Date(); d.setDate(d.getDate() + 1); setForm({ ...form, appointment_date: d.toISOString().slice(0,10) }); }}>غداً</Button>
+                  <Button type="button" size="sm" variant="outline" onClick={() => { const d = new Date(); d.setDate(d.getDate() + 2); setForm({ ...form, appointment_date: d.toISOString().slice(0,10) }); }}>بعد يومين</Button>
+                  <Button type="button" size="sm" variant="outline" onClick={() => { const d = new Date(); d.setDate(d.getDate() + 7); setForm({ ...form, appointment_date: d.toISOString().slice(0,10) }); }}>الأسبوع القادم</Button>
+                </div>
+              </div>
+              <div><Label>وقت الموعد (اختياري)</Label><Input type="time" value={form.appointment_time} onChange={(e) => setForm({ ...form, appointment_time: e.target.value })} /></div>
               <div><Label>العمر</Label><Input type="number" value={form.age} onChange={(e) => setForm({ ...form, age: e.target.value })} /></div>
               <div><Label>الجنس</Label>
                 <Select value={form.gender} onValueChange={(v) => setForm({ ...form, gender: v })}>

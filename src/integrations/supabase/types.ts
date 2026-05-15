@@ -129,6 +129,8 @@ export type Database = {
         Row: {
           added_by: string | null
           age: number | null
+          appointment_date: string
+          appointment_time: string | null
           chronic_diseases: string | null
           created_at: string
           doctor_id: string
@@ -137,11 +139,14 @@ export type Database = {
           id: string
           notes: string | null
           phone: string | null
+          status: string
           updated_at: string
         }
         Insert: {
           added_by?: string | null
           age?: number | null
+          appointment_date?: string
+          appointment_time?: string | null
           chronic_diseases?: string | null
           created_at?: string
           doctor_id: string
@@ -150,11 +155,14 @@ export type Database = {
           id?: string
           notes?: string | null
           phone?: string | null
+          status?: string
           updated_at?: string
         }
         Update: {
           added_by?: string | null
           age?: number | null
+          appointment_date?: string
+          appointment_time?: string | null
           chronic_diseases?: string | null
           created_at?: string
           doctor_id?: string
@@ -163,6 +171,7 @@ export type Database = {
           id?: string
           notes?: string | null
           phone?: string | null
+          status?: string
           updated_at?: string
         }
         Relationships: []
