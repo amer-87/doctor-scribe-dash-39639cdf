@@ -32,9 +32,9 @@ function SecretaryPage() {
 
   const loadCount = async () => {
     if (!doctorId) return;
-    const today = new Date(); today.setHours(0, 0, 0, 0);
+    const today = new Date().toISOString().slice(0, 10);
     const { count: c } = await supabase.from("patients").select("*", { count: "exact", head: true })
-      .eq("doctor_id", doctorId).gte("created_at", today.toISOString());
+      .eq("doctor_id", doctorId).eq("appointment_date", today);
     setCount(c ?? 0);
   };
 
