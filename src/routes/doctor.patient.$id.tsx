@@ -174,10 +174,7 @@ function PrescriptionPage() {
 
           {/* PRESCRIPTION BODY */}
           <div className="p-6">
-            <div className="mb-2 flex items-baseline justify-between">
-              <h3 className="text-lg font-bold" style={{ color: t.accent }}>℞ الوصفة الطبية</h3>
-              <span className="text-xs opacity-60 no-print">الكتابة من اليسار إلى اليمين</span>
-            </div>
+            <h3 className="mb-2 text-lg font-bold" style={{ color: t.accent }}>℞ الوصفة الطبية</h3>
 
             <div
               className="rounded-md border-2 overflow-hidden"
