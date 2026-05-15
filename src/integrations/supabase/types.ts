@@ -42,6 +42,7 @@ export type Database = {
           font_size: number
           footer_note: string
           logo_url: string | null
+          print_size: string
           qr_size: number
           rx_prefix: string
           specialty: string
@@ -61,6 +62,7 @@ export type Database = {
           font_size?: number
           footer_note?: string
           logo_url?: string | null
+          print_size?: string
           qr_size?: number
           rx_prefix?: string
           specialty?: string
@@ -80,6 +82,7 @@ export type Database = {
           font_size?: number
           footer_note?: string
           logo_url?: string | null
+          print_size?: string
           qr_size?: number
           rx_prefix?: string
           specialty?: string
