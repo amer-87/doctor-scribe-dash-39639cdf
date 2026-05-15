@@ -448,8 +448,9 @@ function PatientEditDialog({ patient, onClose }: { patient: Patient | null; onCl
     const { error } = await supabase.from("patients").update({
       full_name: form.full_name, age: form.age, gender: form.gender, phone: form.phone,
       chronic_diseases: form.chronic_diseases, notes: form.notes,
-      appointment_date: form.appointment_date, appointment_time: form.appointment_time,
-      status: form.status,
+      appointment_date: form.appointment_date ?? undefined,
+      appointment_time: form.appointment_time ?? null,
+      status: form.status ?? "pending",
     }).eq("id", form.id);
     if (error) toast.error(error.message);
     else { toast.success("تم التحديث"); onClose(); }
