@@ -1,0 +1,1 @@
+ALTER TABLE public.doctor_settings ADD COLUMN IF NOT EXISTS print_size TEXT NOT NULL DEFAULT 'A5';

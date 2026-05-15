@@ -134,17 +134,7 @@
   box-shadow: 0 10px 30px -10px color-mix(in oklab, var(--primary) 30%, transparent);
 }
 
-/* Print styles for prescription */
+/* Print styles are injected per-route to control @page size dynamically */
 @media print {
-  body * { visibility: hidden; }
-  .print-area, .print-area * { visibility: visible; }
-  .print-area {
-    position: absolute;
-    left: 0; top: 0;
-    width: 100%;
-    padding: 2rem;
-    background: white !important;
-    color: black !important;
-  }
   .no-print { display: none !important; }
 }
