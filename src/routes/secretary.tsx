@@ -59,12 +59,15 @@ function SecretaryPage() {
       phone: form.phone || null,
       chronic_diseases: form.chronic_diseases || null,
       notes: form.notes || null,
+      appointment_date: form.appointment_date || todayStr,
+      appointment_time: form.appointment_time || null,
+      status: "pending",
     });
     setSubmitting(false);
     if (error) toast.error(error.message);
     else {
-      toast.success("تم إضافة المراجع — يظهر فوراً عند الطبيب");
-      setForm({ full_name: "", age: "", gender: "", phone: "", chronic_diseases: "", notes: "" });
+      toast.success("تم إضافة الموعد — يظهر فوراً عند الطبيب");
+      setForm({ full_name: "", age: "", gender: "", phone: "", chronic_diseases: "", notes: "", appointment_date: todayStr, appointment_time: "" });
     }
   };
 
