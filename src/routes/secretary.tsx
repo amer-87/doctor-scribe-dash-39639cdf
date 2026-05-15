@@ -86,10 +86,21 @@ function SecretaryPage() {
         </div>
 
         <Card className="shadow-elegant">
-          <CardHeader><CardTitle className="flex items-center gap-2"><UserPlus className="h-5 w-5" />إضافة مراجع جديد</CardTitle></CardHeader>
+          <CardHeader><CardTitle className="flex items-center gap-2"><UserPlus className="h-5 w-5" />حجز موعد / إضافة مراجع</CardTitle></CardHeader>
           <CardContent>
             <form onSubmit={submit} className="grid gap-3 md:grid-cols-2">
               <div className="md:col-span-2"><Label>الاسم الكامل *</Label><Input required value={form.full_name} onChange={(e) => setForm({ ...form, full_name: e.target.value })} /></div>
+              <div>
+                <Label>تاريخ الموعد *</Label>
+                <Input type="date" required value={form.appointment_date} onChange={(e) => setForm({ ...form, appointment_date: e.target.value })} />
+                <div className="mt-1 flex flex-wrap gap-1">
+                  <Button type="button" size="sm" variant="outline" onClick={() => setForm({ ...form, appointment_date: todayStr })}>اليوم</Button>
+                  <Button type="button" size="sm" variant="outline" onClick={() => { const d = new Date(); d.setDate(d.getDate() + 1); setForm({ ...form, appointment_date: d.toISOString().slice(0,10) }); }}>غداً</Button>
+                  <Button type="button" size="sm" variant="outline" onClick={() => { const d = new Date(); d.setDate(d.getDate() + 2); setForm({ ...form, appointment_date: d.toISOString().slice(0,10) }); }}>بعد يومين</Button>
+                  <Button type="button" size="sm" variant="outline" onClick={() => { const d = new Date(); d.setDate(d.getDate() + 7); setForm({ ...form, appointment_date: d.toISOString().slice(0,10) }); }}>الأسبوع القادم</Button>
+                </div>
+              </div>
+              <div><Label>وقت الموعد (اختياري)</Label><Input type="time" value={form.appointment_time} onChange={(e) => setForm({ ...form, appointment_time: e.target.value })} /></div>
               <div><Label>العمر</Label><Input type="number" value={form.age} onChange={(e) => setForm({ ...form, age: e.target.value })} /></div>
               <div><Label>الجنس</Label>
                 <Select value={form.gender} onValueChange={(v) => setForm({ ...form, gender: v })}>
