@@ -22,8 +22,10 @@ function SecretaryPage() {
   const nav = useNavigate();
   const [count, setCount] = useState(0);
   const [submitting, setSubmitting] = useState(false);
+  const todayStr = new Date().toISOString().slice(0, 10);
   const [form, setForm] = useState({
     full_name: "", age: "", gender: "", phone: "", chronic_diseases: "", notes: "",
+    appointment_date: todayStr, appointment_time: "",
   });
 
   const doctorId = profile?.doctor_id;
