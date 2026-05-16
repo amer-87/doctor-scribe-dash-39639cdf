@@ -1,7 +1,7 @@
-import { createFileRoute, useNavigate } from "@tanstack/react-router";
+import { createFileRoute } from "@tanstack/react-router";
 import { RequireAuth } from "@/components/RequireAuth";
 import { AppHeader } from "@/components/AppHeader";
-import { useEffect, useState } from "react";
+import { useEffect, useMemo, useState } from "react";
 import { supabase } from "@/integrations/supabase/client";
 import { useAuth } from "@/hooks/use-auth";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
@@ -9,20 +9,44 @@ import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import { Textarea } from "@/components/ui/textarea";
+import { Badge } from "@/components/ui/badge";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
-import { Calendar, Users, UserPlus, Loader2 } from "lucide-react";
+import { Tabs, TabsList, TabsTrigger, TabsContent } from "@/components/ui/tabs";
+import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogFooter } from "@/components/ui/dialog";
+import {
+  Table, TableBody, TableCell, TableHead, TableHeader, TableRow,
+} from "@/components/ui/table";
+import { Calendar, Users, UserPlus, Loader2, Pencil, Trash2, Clock, Phone, Search, CalendarDays, Archive, Activity, Bell, CalendarClock } from "lucide-react";
 import { toast } from "sonner";
+import { cn } from "@/lib/utils";
 
 export const Route = createFileRoute("/secretary")({
   component: () => <RequireAuth allow={["secretary"]}><SecretaryPage /></RequireAuth>,
 });
 
+interface Patient {
+  id: string; full_name: string; age: number | null; gender: string | null;
+  phone: string | null; chronic_diseases: string | null; notes: string | null;
+  created_at: string; appointment_date: string | null;
+  appointment_time: string | null; status: string | null;
+}
+
+const STATUS_LABELS: Record<string, { label: string; variant: "default" | "secondary" | "destructive" | "outline" }> = {
+  pending: { label: "بانتظار", variant: "secondary" },
+  done: { label: "تم الفحص", variant: "default" },
+  cancelled: { label: "ملغي", variant: "destructive" },
+  postponed: { label: "مؤجل", variant: "outline" },
+};
+
+function isoOf(d: Date) { return d.toISOString().slice(0, 10); }
+function addDaysISO(n: number) { const d = new Date(); d.setDate(d.getDate() + n); return isoOf(d); }
+
 function SecretaryPage() {
   const { user, profile } = useAuth();
-  const nav = useNavigate();
-  const [count, setCount] = useState(0);
+  const todayStr = isoOf(new Date());
   const [submitting, setSubmitting] = useState(false);
-  const todayStr = new Date().toISOString().slice(0, 10);
+  const [patients, setPatients] = useState<Patient[]>([]);
+  const [editing, setEditing] = useState<Patient | null>(null);
   const [form, setForm] = useState({
     full_name: "", age: "", gender: "", phone: "", chronic_diseases: "", notes: "",
     appointment_date: todayStr, appointment_time: "",
@@ -30,19 +54,20 @@ function SecretaryPage() {
 
   const doctorId = profile?.doctor_id;
 
-  const loadCount = async () => {
+  const load = async () => {
     if (!doctorId) return;
-    const today = new Date().toISOString().slice(0, 10);
-    const { count: c } = await supabase.from("patients").select("*", { count: "exact", head: true })
-      .eq("doctor_id", doctorId).eq("appointment_date", today);
-    setCount(c ?? 0);
+    const { data } = await supabase.from("patients").select("*")
+      .eq("doctor_id", doctorId)
+      .order("appointment_date", { ascending: true })
+      .order("appointment_time", { ascending: true, nullsFirst: false });
+    setPatients((data as Patient[]) ?? []);
   };
 
   useEffect(() => {
-    loadCount();
+    load();
     if (!doctorId) return;
-    const ch = supabase.channel("sec-patients")
-      .on("postgres_changes", { event: "*", schema: "public", table: "patients", filter: `doctor_id=eq.${doctorId}` }, loadCount)
+    const ch = supabase.channel("sec-patients-rt")
+      .on("postgres_changes", { event: "*", schema: "public", table: "patients", filter: `doctor_id=eq.${doctorId}` }, load)
       .subscribe();
     return () => { supabase.removeChannel(ch); };
   }, [doctorId]);
@@ -66,56 +91,382 @@ function SecretaryPage() {
     setSubmitting(false);
     if (error) toast.error(error.message);
     else {
-      toast.success("تم إضافة الموعد — يظهر فوراً عند الطبيب");
+      toast.success("تم حجز الموعد — يظهر فوراً عند الطبيب");
       setForm({ full_name: "", age: "", gender: "", phone: "", chronic_diseases: "", notes: "", appointment_date: todayStr, appointment_time: "" });
     }
   };
+
+  const deletePatient = async (id: string) => {
+    if (!confirm("حذف هذا الموعد؟")) return;
+    const { error } = await supabase.from("patients").delete().eq("id", id);
+    if (error) toast.error(error.message); else toast.success("تم حذف الموعد");
+  };
+
+  const reschedule = async (id: string, days: number) => {
+    const p = patients.find((x) => x.id === id);
+    const base = p?.appointment_date ? new Date(p.appointment_date) : new Date();
+    base.setDate(base.getDate() + days);
+    const { error } = await supabase.from("patients").update({ appointment_date: isoOf(base), status: "postponed" }).eq("id", id);
+    if (error) toast.error(error.message); else toast.success(`تم تأجيل الموعد ${days} يوم`);
+  };
+
+  const setStatus = async (id: string, status: string) => {
+    const { error } = await supabase.from("patients").update({ status }).eq("id", id);
+    if (error) toast.error(error.message); else toast.success("تم تحديث الحالة");
+  };
+
+  const today = todayStr;
+  const tomorrow = addDaysISO(1);
+  const dayAfter = addDaysISO(2);
+  const weekEnd = addDaysISO(7);
+
+  const getDate = (p: Patient) => p.appointment_date ?? p.created_at.slice(0, 10);
+  const todayList = patients.filter((p) => getDate(p) === today);
+  const tomorrowList = patients.filter((p) => getDate(p) === tomorrow);
+  const dayAfterList = patients.filter((p) => getDate(p) === dayAfter);
+  const weekList = patients.filter((p) => { const d = getDate(p); return d >= today && d <= weekEnd; });
+  const upcomingList = patients.filter((p) => getDate(p) > today);
+  const archiveList = patients.filter((p) => getDate(p) < today);
 
   const now = new Date();
   const dateStr = now.toLocaleDateString("ar-EG", { year: "numeric", month: "long", day: "numeric" });
   const dayStr = now.toLocaleDateString("ar-EG", { weekday: "long" });
 
+  const quickDays: { label: string; days: number }[] = [
+    { label: "اليوم", days: 0 },
+    { label: "غداً", days: 1 },
+    { label: "بعد غد", days: 2 },
+    { label: "بعد 3 أيام", days: 3 },
+    { label: "الأسبوع القادم", days: 7 },
+  ];
+
   return (
     <div className="min-h-screen bg-background">
       <AppHeader />
-      <main className="container mx-auto max-w-3xl p-4 md:p-8">
-        <div className="mb-6 grid gap-3 md:grid-cols-3">
-          <Card><CardContent className="flex items-center gap-3 p-4"><Calendar className="h-5 w-5 text-primary" /><div><div className="text-xs text-muted-foreground">التاريخ</div><div className="font-semibold">{dateStr}</div></div></CardContent></Card>
-          <Card><CardContent className="flex items-center gap-3 p-4"><Calendar className="h-5 w-5 text-primary" /><div><div className="text-xs text-muted-foreground">اليوم</div><div className="font-semibold">{dayStr}</div></div></CardContent></Card>
-          <Card><CardContent className="flex items-center gap-3 p-4"><Users className="h-5 w-5 text-primary" /><div><div className="text-xs text-muted-foreground">مراجعو اليوم</div><div className="text-2xl font-bold">{count}</div></div></CardContent></Card>
+      <main className="container mx-auto max-w-6xl p-4 md:p-8">
+        <div className="mb-6 grid gap-3 md:grid-cols-4">
+          <StatCard icon={<Calendar className="h-5 w-5" />} label="التاريخ" value={dateStr} />
+          <StatCard icon={<Activity className="h-5 w-5 text-primary" />} label="اليوم" value={dayStr} />
+          <StatCard icon={<Users className="h-5 w-5 text-primary" />} label="مواعيد اليوم" value={todayList.length} big />
+          <StatCard icon={<Bell className="h-5 w-5 text-warning" />} label="مواعيد الغد" value={tomorrowList.length} big />
         </div>
 
-        <Card className="shadow-elegant">
-          <CardHeader><CardTitle className="flex items-center gap-2"><UserPlus className="h-5 w-5" />حجز موعد / إضافة مراجع</CardTitle></CardHeader>
+        <Card className="mb-6 shadow-elegant">
+          <CardHeader>
+            <CardTitle className="flex items-center gap-2"><UserPlus className="h-5 w-5 text-primary" />حجز موعد جديد</CardTitle>
+          </CardHeader>
           <CardContent>
             <form onSubmit={submit} className="grid gap-3 md:grid-cols-2">
-              <div className="md:col-span-2"><Label>الاسم الكامل *</Label><Input required value={form.full_name} onChange={(e) => setForm({ ...form, full_name: e.target.value })} /></div>
-              <div>
+              <div className="md:col-span-2">
+                <Label>الاسم الكامل *</Label>
+                <Input required value={form.full_name} onChange={(e) => setForm({ ...form, full_name: e.target.value })} />
+              </div>
+              <div className="md:col-span-2">
                 <Label>تاريخ الموعد *</Label>
                 <Input type="date" required value={form.appointment_date} onChange={(e) => setForm({ ...form, appointment_date: e.target.value })} />
-                <div className="mt-1 flex flex-wrap gap-1">
-                  <Button type="button" size="sm" variant="outline" onClick={() => setForm({ ...form, appointment_date: todayStr })}>اليوم</Button>
-                  <Button type="button" size="sm" variant="outline" onClick={() => { const d = new Date(); d.setDate(d.getDate() + 1); setForm({ ...form, appointment_date: d.toISOString().slice(0,10) }); }}>غداً</Button>
-                  <Button type="button" size="sm" variant="outline" onClick={() => { const d = new Date(); d.setDate(d.getDate() + 2); setForm({ ...form, appointment_date: d.toISOString().slice(0,10) }); }}>بعد يومين</Button>
-                  <Button type="button" size="sm" variant="outline" onClick={() => { const d = new Date(); d.setDate(d.getDate() + 7); setForm({ ...form, appointment_date: d.toISOString().slice(0,10) }); }}>الأسبوع القادم</Button>
+                <div className="mt-2 flex flex-wrap gap-2">
+                  {quickDays.map((q) => {
+                    const target = addDaysISO(q.days);
+                    const active = form.appointment_date === target;
+                    return (
+                      <button
+                        type="button"
+                        key={q.label}
+                        onClick={() => setForm({ ...form, appointment_date: target })}
+                        className={cn(
+                          "rounded-full border px-4 py-1.5 text-sm font-medium transition-all duration-200",
+                          active
+                            ? "bg-primary text-primary-foreground border-primary shadow-md scale-105"
+                            : "bg-background hover:bg-accent hover:scale-105 border-border",
+                        )}
+                      >
+                        {q.label}
+                      </button>
+                    );
+                  })}
                 </div>
               </div>
-              <div><Label>وقت الموعد (اختياري)</Label><Input type="time" value={form.appointment_time} onChange={(e) => setForm({ ...form, appointment_time: e.target.value })} /></div>
-              <div><Label>العمر</Label><Input type="number" value={form.age} onChange={(e) => setForm({ ...form, age: e.target.value })} /></div>
-              <div><Label>الجنس</Label>
+              <div>
+                <Label>وقت الموعد (اختياري)</Label>
+                <Input type="time" value={form.appointment_time} onChange={(e) => setForm({ ...form, appointment_time: e.target.value })} />
+              </div>
+              <div>
+                <Label>العمر</Label>
+                <Input type="number" value={form.age} onChange={(e) => setForm({ ...form, age: e.target.value })} />
+              </div>
+              <div>
+                <Label>الجنس</Label>
                 <Select value={form.gender} onValueChange={(v) => setForm({ ...form, gender: v })}>
                   <SelectTrigger><SelectValue placeholder="اختر" /></SelectTrigger>
-                  <SelectContent><SelectItem value="ذكر">ذكر</SelectItem><SelectItem value="أنثى">أنثى</SelectItem></SelectContent>
+                  <SelectContent>
+                    <SelectItem value="ذكر">ذكر</SelectItem>
+                    <SelectItem value="أنثى">أنثى</SelectItem>
+                  </SelectContent>
                 </Select>
               </div>
-              <div className="md:col-span-2"><Label>رقم الهاتف</Label><Input value={form.phone} onChange={(e) => setForm({ ...form, phone: e.target.value })} dir="ltr" /></div>
-              <div className="md:col-span-2"><Label>الأمراض المزمنة</Label><Textarea rows={2} value={form.chronic_diseases} onChange={(e) => setForm({ ...form, chronic_diseases: e.target.value })} /></div>
-              <div className="md:col-span-2"><Label>الملاحظات</Label><Textarea rows={3} value={form.notes} onChange={(e) => setForm({ ...form, notes: e.target.value })} /></div>
-              <div className="md:col-span-2"><Button type="submit" disabled={submitting} className="w-full">{submitting && <Loader2 className="ml-2 h-4 w-4 animate-spin" />}إضافة المراجع</Button></div>
+              <div>
+                <Label>رقم الهاتف</Label>
+                <Input value={form.phone} onChange={(e) => setForm({ ...form, phone: e.target.value })} dir="ltr" />
+              </div>
+              <div className="md:col-span-2">
+                <Label>الأمراض المزمنة</Label>
+                <Textarea rows={2} value={form.chronic_diseases} onChange={(e) => setForm({ ...form, chronic_diseases: e.target.value })} />
+              </div>
+              <div className="md:col-span-2">
+                <Label>الملاحظات</Label>
+                <Textarea rows={2} value={form.notes} onChange={(e) => setForm({ ...form, notes: e.target.value })} />
+              </div>
+              <div className="md:col-span-2">
+                <Button type="submit" disabled={submitting} className="w-full">
+                  {submitting && <Loader2 className="ml-2 h-4 w-4 animate-spin" />}
+                  حجز الموعد
+                </Button>
+              </div>
             </form>
           </CardContent>
         </Card>
+
+        <Tabs defaultValue="today" className="w-full">
+          <TabsList className="mb-4 flex h-auto w-full flex-wrap">
+            <TabsTrigger value="today"><Activity className="ml-1 h-4 w-4" />اليوم ({todayList.length})</TabsTrigger>
+            <TabsTrigger value="tomorrow"><Bell className="ml-1 h-4 w-4" />غداً ({tomorrowList.length})</TabsTrigger>
+            <TabsTrigger value="dayafter"><CalendarClock className="ml-1 h-4 w-4" />بعد غد ({dayAfterList.length})</TabsTrigger>
+            <TabsTrigger value="week"><CalendarDays className="ml-1 h-4 w-4" />هذا الأسبوع ({weekList.length})</TabsTrigger>
+            <TabsTrigger value="upcoming"><Clock className="ml-1 h-4 w-4" />القادمة ({upcomingList.length})</TabsTrigger>
+            <TabsTrigger value="history"><Archive className="ml-1 h-4 w-4" />السجل</TabsTrigger>
+          </TabsList>
+
+          <TabsContent value="today"><CardsList list={todayList} onEdit={setEditing} onDelete={deletePatient} onReschedule={reschedule} onStatus={setStatus} empty="لا توجد مواعيد اليوم." /></TabsContent>
+          <TabsContent value="tomorrow"><CardsList list={tomorrowList} onEdit={setEditing} onDelete={deletePatient} onReschedule={reschedule} onStatus={setStatus} empty="لا توجد مواعيد غداً." /></TabsContent>
+          <TabsContent value="dayafter"><CardsList list={dayAfterList} onEdit={setEditing} onDelete={deletePatient} onReschedule={reschedule} onStatus={setStatus} empty="لا توجد مواعيد بعد غد." /></TabsContent>
+          <TabsContent value="week"><CardsList list={weekList} onEdit={setEditing} onDelete={deletePatient} onReschedule={reschedule} onStatus={setStatus} empty="لا توجد مواعيد هذا الأسبوع." showDate /></TabsContent>
+          <TabsContent value="upcoming"><CardsList list={upcomingList} onEdit={setEditing} onDelete={deletePatient} onReschedule={reschedule} onStatus={setStatus} empty="لا توجد مواعيد قادمة." showDate /></TabsContent>
+          <TabsContent value="history"><HistoryTable list={[...archiveList, ...todayList, ...upcomingList].sort((a, b) => (getDate(b)).localeCompare(getDate(a)))} onEdit={setEditing} onDelete={deletePatient} /></TabsContent>
+        </Tabs>
+
+        <PatientEditDialog patient={editing} onClose={() => setEditing(null)} />
       </main>
     </div>
+  );
+}
+
+function StatCard({ icon, label, value, big }: { icon: React.ReactNode; label: string; value: string | number; big?: boolean }) {
+  return (
+    <Card>
+      <CardContent className="flex items-center gap-3 p-4">
+        <div className="rounded-lg bg-muted/50 p-3">{icon}</div>
+        <div className="min-w-0">
+          <div className="text-xs text-muted-foreground">{label}</div>
+          <div className={cn("font-bold truncate", big ? "text-2xl" : "text-sm")}>{value}</div>
+        </div>
+      </CardContent>
+    </Card>
+  );
+}
+
+function StatusBadge({ status }: { status: string | null }) {
+  const s = STATUS_LABELS[status ?? "pending"] ?? STATUS_LABELS.pending;
+  return <Badge variant={s.variant}>{s.label}</Badge>;
+}
+
+function CardsList({
+  list, onEdit, onDelete, onReschedule, onStatus, empty, showDate,
+}: {
+  list: Patient[]; onEdit: (p: Patient) => void; onDelete: (id: string) => void;
+  onReschedule: (id: string, days: number) => void; onStatus: (id: string, status: string) => void;
+  empty: string; showDate?: boolean;
+}) {
+  const [search, setSearch] = useState("");
+  const [statusFilter, setStatusFilter] = useState("all");
+  const filtered = list.filter((p) => {
+    const q = search.trim().toLowerCase();
+    if (q && !(p.full_name.toLowerCase().includes(q) || (p.phone ?? "").includes(q))) return false;
+    if (statusFilter !== "all" && (p.status ?? "pending") !== statusFilter) return false;
+    return true;
+  });
+  const fmtDate = (s: string | null) => s ? new Date(s).toLocaleDateString("ar-EG", { weekday: "short", day: "numeric", month: "short" }) : "—";
+  return (
+    <div>
+      <div className="mb-4 flex flex-wrap items-center gap-2">
+        <div className="flex flex-1 min-w-[200px] items-center gap-2">
+          <Search className="h-4 w-4 text-muted-foreground" />
+          <Input placeholder="بحث بالاسم أو الهاتف..." value={search} onChange={(e) => setSearch(e.target.value)} />
+        </div>
+        <Select value={statusFilter} onValueChange={setStatusFilter}>
+          <SelectTrigger className="w-[160px]"><SelectValue /></SelectTrigger>
+          <SelectContent>
+            <SelectItem value="all">كل الحالات</SelectItem>
+            <SelectItem value="pending">بانتظار</SelectItem>
+            <SelectItem value="done">تم الفحص</SelectItem>
+            <SelectItem value="cancelled">ملغي</SelectItem>
+            <SelectItem value="postponed">مؤجل</SelectItem>
+          </SelectContent>
+        </Select>
+      </div>
+      <div className="grid gap-3 md:grid-cols-2 lg:grid-cols-3">
+        {filtered.map((p) => (
+          <Card key={p.id} className="group transition-all hover:shadow-elegant hover:border-primary/40">
+            <CardHeader className="pb-3">
+              <div className="flex items-start justify-between gap-2">
+                <CardTitle className="truncate text-lg">{p.full_name}</CardTitle>
+                <StatusBadge status={p.status} />
+              </div>
+              <div className="flex flex-wrap items-center gap-2 text-xs text-muted-foreground">
+                {showDate && <span className="flex items-center gap-1"><CalendarDays className="h-3 w-3" />{fmtDate(p.appointment_date)}</span>}
+                {p.appointment_time && <span className="flex items-center gap-1" dir="ltr"><Clock className="h-3 w-3" />{p.appointment_time.slice(0,5)}</span>}
+              </div>
+            </CardHeader>
+            <CardContent className="space-y-2 text-sm">
+              <div className="flex flex-wrap gap-2">
+                {p.age != null && <Badge variant="secondary">العمر: {p.age}</Badge>}
+                {p.gender && <Badge variant="secondary">{p.gender}</Badge>}
+              </div>
+              {p.phone && <div className="flex items-center gap-1 text-muted-foreground"><Phone className="h-3 w-3" /><span dir="ltr">{p.phone}</span></div>}
+              {p.chronic_diseases && <div className="line-clamp-2 text-muted-foreground"><span className="font-medium">الأمراض:</span> {p.chronic_diseases}</div>}
+              <div className="flex items-center gap-2 pt-2">
+                <Select value={p.status ?? "pending"} onValueChange={(v) => onStatus(p.id, v)}>
+                  <SelectTrigger className="h-8 flex-1 text-xs"><SelectValue /></SelectTrigger>
+                  <SelectContent>
+                    <SelectItem value="pending">بانتظار</SelectItem>
+                    <SelectItem value="done">تم الفحص</SelectItem>
+                    <SelectItem value="cancelled">ملغي</SelectItem>
+                    <SelectItem value="postponed">مؤجل</SelectItem>
+                  </SelectContent>
+                </Select>
+                <Button size="icon" variant="ghost" onClick={() => onEdit(p)} title="تعديل"><Pencil className="h-4 w-4" /></Button>
+                <Button size="icon" variant="ghost" onClick={() => onDelete(p.id)} title="حذف"><Trash2 className="h-4 w-4 text-destructive" /></Button>
+              </div>
+              <div className="flex flex-wrap gap-1 pt-1">
+                <Button size="sm" variant="outline" className="h-7 text-xs" onClick={() => onReschedule(p.id, 1)}>+1 يوم</Button>
+                <Button size="sm" variant="outline" className="h-7 text-xs" onClick={() => onReschedule(p.id, 2)}>+2 يوم</Button>
+                <Button size="sm" variant="outline" className="h-7 text-xs" onClick={() => onReschedule(p.id, 7)}>+أسبوع</Button>
+              </div>
+            </CardContent>
+          </Card>
+        ))}
+        {filtered.length === 0 && (
+          <div className="col-span-full py-12 text-center text-muted-foreground">{empty}</div>
+        )}
+      </div>
+    </div>
+  );
+}
+
+function HistoryTable({ list, onEdit, onDelete }: { list: Patient[]; onEdit: (p: Patient) => void; onDelete: (id: string) => void }) {
+  const [search, setSearch] = useState("");
+  const [from, setFrom] = useState("");
+  const [to, setTo] = useState("");
+  const filtered = useMemo(() => {
+    const q = search.trim().toLowerCase();
+    return list.filter((p) => {
+      if (q && !(p.full_name.toLowerCase().includes(q) || (p.phone ?? "").includes(q))) return false;
+      const d = p.appointment_date ?? p.created_at.slice(0, 10);
+      if (from && d < from) return false;
+      if (to && d > to) return false;
+      return true;
+    });
+  }, [list, search, from, to]);
+  return (
+    <Card>
+      <CardContent className="space-y-4 p-4">
+        <div className="grid gap-2 md:grid-cols-4">
+          <div className="md:col-span-2 flex items-center gap-2">
+            <Search className="h-4 w-4 text-muted-foreground" />
+            <Input placeholder="بحث بالاسم أو الهاتف..." value={search} onChange={(e) => setSearch(e.target.value)} />
+          </div>
+          <div><Label className="text-xs">من تاريخ</Label><Input type="date" value={from} onChange={(e) => setFrom(e.target.value)} /></div>
+          <div><Label className="text-xs">إلى تاريخ</Label><Input type="date" value={to} onChange={(e) => setTo(e.target.value)} /></div>
+        </div>
+        <div className="overflow-x-auto">
+          <Table>
+            <TableHeader>
+              <TableRow>
+                <TableHead>الاسم</TableHead>
+                <TableHead>التاريخ</TableHead>
+                <TableHead>الوقت</TableHead>
+                <TableHead>الهاتف</TableHead>
+                <TableHead>الحالة</TableHead>
+                <TableHead className="text-center">الإجراءات</TableHead>
+              </TableRow>
+            </TableHeader>
+            <TableBody>
+              {filtered.map((p) => (
+                <TableRow key={p.id}>
+                  <TableCell className="font-medium">{p.full_name}</TableCell>
+                  <TableCell className="whitespace-nowrap text-xs">{p.appointment_date ?? "—"}</TableCell>
+                  <TableCell className="text-xs" dir="ltr">{p.appointment_time?.slice(0,5) ?? "—"}</TableCell>
+                  <TableCell className="text-xs" dir="ltr">{p.phone ?? "—"}</TableCell>
+                  <TableCell><StatusBadge status={p.status} /></TableCell>
+                  <TableCell>
+                    <div className="flex justify-center gap-1">
+                      <Button size="icon" variant="ghost" onClick={() => onEdit(p)} title="تعديل"><Pencil className="h-4 w-4" /></Button>
+                      <Button size="icon" variant="ghost" onClick={() => onDelete(p.id)} title="حذف"><Trash2 className="h-4 w-4 text-destructive" /></Button>
+                    </div>
+                  </TableCell>
+                </TableRow>
+              ))}
+              {filtered.length === 0 && (
+                <TableRow><TableCell colSpan={6} className="py-8 text-center text-muted-foreground">لا توجد نتائج</TableCell></TableRow>
+              )}
+            </TableBody>
+          </Table>
+        </div>
+      </CardContent>
+    </Card>
+  );
+}
+
+function PatientEditDialog({ patient, onClose }: { patient: Patient | null; onClose: () => void }) {
+  const [form, setForm] = useState<Patient | null>(patient);
+  useEffect(() => setForm(patient), [patient]);
+  if (!form) return null;
+  const save = async () => {
+    const { error } = await supabase.from("patients").update({
+      full_name: form.full_name, age: form.age, gender: form.gender, phone: form.phone,
+      chronic_diseases: form.chronic_diseases, notes: form.notes,
+      appointment_date: form.appointment_date ?? undefined,
+      appointment_time: form.appointment_time ?? null,
+      status: form.status ?? "pending",
+    }).eq("id", form.id);
+    if (error) toast.error(error.message);
+    else { toast.success("تم تحديث الموعد"); onClose(); }
+  };
+  return (
+    <Dialog open={!!patient} onOpenChange={(o) => !o && onClose()}>
+      <DialogContent>
+        <DialogHeader><DialogTitle>تعديل الموعد</DialogTitle></DialogHeader>
+        <div className="grid gap-3">
+          <div><Label>الاسم</Label><Input value={form.full_name} onChange={(e) => setForm({ ...form, full_name: e.target.value })} /></div>
+          <div className="grid grid-cols-2 gap-2">
+            <div><Label>تاريخ الموعد</Label><Input type="date" value={form.appointment_date ?? ""} onChange={(e) => setForm({ ...form, appointment_date: e.target.value })} /></div>
+            <div><Label>وقت الموعد</Label><Input type="time" value={form.appointment_time ?? ""} onChange={(e) => setForm({ ...form, appointment_time: e.target.value })} /></div>
+          </div>
+          <div><Label>الحالة</Label>
+            <Select value={form.status ?? "pending"} onValueChange={(v) => setForm({ ...form, status: v })}>
+              <SelectTrigger><SelectValue /></SelectTrigger>
+              <SelectContent>
+                <SelectItem value="pending">بانتظار</SelectItem>
+                <SelectItem value="done">تم الفحص</SelectItem>
+                <SelectItem value="cancelled">ملغي</SelectItem>
+                <SelectItem value="postponed">مؤجل</SelectItem>
+              </SelectContent>
+            </Select>
+          </div>
+          <div className="grid grid-cols-2 gap-2">
+            <div><Label>العمر</Label><Input type="number" value={form.age ?? ""} onChange={(e) => setForm({ ...form, age: e.target.value ? +e.target.value : null })} /></div>
+            <div><Label>الجنس</Label>
+              <Select value={form.gender ?? ""} onValueChange={(v) => setForm({ ...form, gender: v })}>
+                <SelectTrigger><SelectValue placeholder="اختر" /></SelectTrigger>
+                <SelectContent><SelectItem value="ذكر">ذكر</SelectItem><SelectItem value="أنثى">أنثى</SelectItem></SelectContent>
+              </Select>
+            </div>
+          </div>
+          <div><Label>الهاتف</Label><Input value={form.phone ?? ""} onChange={(e) => setForm({ ...form, phone: e.target.value })} dir="ltr" /></div>
+          <div><Label>الأمراض المزمنة</Label><Textarea value={form.chronic_diseases ?? ""} onChange={(e) => setForm({ ...form, chronic_diseases: e.target.value })} /></div>
+          <div><Label>الملاحظات</Label><Textarea value={form.notes ?? ""} onChange={(e) => setForm({ ...form, notes: e.target.value })} /></div>
+        </div>
+        <DialogFooter><Button onClick={save}>حفظ</Button></DialogFooter>
+      </DialogContent>
+    </Dialog>
   );
 }
