@@ -6,7 +6,6 @@ import { supabase } from "@/integrations/supabase/client";
 import { useAuth } from "@/hooks/use-auth";
 import { Card } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
-import { Textarea } from "@/components/ui/textarea";
 import { ArrowRight, Printer, Save, Download, Loader2, ShieldCheck } from "lucide-react";
 import { toast } from "sonner";
 import { QRCodeSVG } from "qrcode.react";
@@ -155,10 +154,14 @@ function PrescriptionPage() {
           </div>
           <pre
             dir="ltr"
-            className="m-0 min-h-[140px] whitespace-pre-wrap p-3 font-mono leading-relaxed"
+            contentEditable
+            suppressContentEditableWarning
+            onBlur={(e) => setBody(e.currentTarget.innerText.replace(/\n$/, ""))}
+            data-placeholder="Write medications, dosage, instructions..."
+            className="rx-editable m-0 min-h-[140px] whitespace-pre-wrap p-3 font-mono leading-relaxed outline-none focus:bg-yellow-50/30"
             style={{ background: t.bg, color: t.text, textAlign: "left", fontSize: `${settings?.font_size || 14}px` }}
           >
-            {body || "—"}
+            {body}
           </pre>
         </div>
       </div>
@@ -236,34 +239,9 @@ function PrescriptionPage() {
           </div>
         </div>
 
-        {/* Editor (screen only) */}
-        <Card className="mb-6 p-4 no-print">
-          <label className="mb-2 block text-sm font-semibold" style={{ color: t.accent }}>
-            ℞ محتوى الوصفة الطبية
-          </label>
-          <div className="rounded-md border-2 overflow-hidden" style={{ borderColor: `${t.accent}55` }}>
-            <div
-              className="border-b px-3 py-2 font-mono text-base font-bold"
-              style={{ background: `${t.header}15`, color: t.accent, borderColor: `${t.accent}30` }}
-              dir="ltr"
-            >
-              {rxPrefix}
-            </div>
-            <Textarea
-              dir="ltr"
-              value={body}
-              onChange={(e) => setBody(e.target.value)}
-              placeholder="Write medications, dosage, instructions..."
-              className="min-h-[220px] resize-none rounded-none border-0 font-mono leading-relaxed focus-visible:ring-0"
-              style={{ background: t.bg, color: t.text, textAlign: "left", fontSize: `${settings?.font_size || 16}px` }}
-            />
-          </div>
-          <p className="mt-2 text-xs text-muted-foreground">المعاينة بالأسفل تطابق الشكل النهائي للطباعة (A4 أفقي – وصفتان متطابقتان).</p>
-        </Card>
-
-        {/* Preview = print area (A4 landscape, 2 slips) */}
+        {/* Preview = print area (A5 portrait, single slip, inline-editable) */}
         <div className="mb-2 flex items-center justify-between no-print">
-          <h2 className="text-sm font-semibold text-muted-foreground">معاينة الطباعة</h2>
+          <h2 className="text-sm font-semibold text-muted-foreground">الوصفة الطبية — انقر داخل منطقة الأدوية للكتابة مباشرة</h2>
         </div>
         <div className="overflow-x-auto no-print-scroll">
           <div
