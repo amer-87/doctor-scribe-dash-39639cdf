@@ -154,10 +154,14 @@ function PrescriptionPage() {
           </div>
           <pre
             dir="ltr"
-            className="m-0 min-h-[140px] whitespace-pre-wrap p-3 font-mono leading-relaxed"
+            contentEditable
+            suppressContentEditableWarning
+            onBlur={(e) => setBody(e.currentTarget.innerText.replace(/\n$/, ""))}
+            data-placeholder="Write medications, dosage, instructions..."
+            className="rx-editable m-0 min-h-[140px] whitespace-pre-wrap p-3 font-mono leading-relaxed outline-none focus:bg-yellow-50/30"
             style={{ background: t.bg, color: t.text, textAlign: "left", fontSize: `${settings?.font_size || 14}px` }}
           >
-            {body || "—"}
+            {body}
           </pre>
         </div>
       </div>
