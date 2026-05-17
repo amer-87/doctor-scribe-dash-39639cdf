@@ -6,6 +6,7 @@ import { supabase } from "@/integrations/supabase/client";
 import { useAuth } from "@/hooks/use-auth";
 import { Card } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
+import { Textarea } from "@/components/ui/textarea";
 import { ArrowRight, Printer, Save, Download, Loader2, ShieldCheck } from "lucide-react";
 import { toast } from "sonner";
 import { QRCodeSVG } from "qrcode.react";
@@ -84,173 +85,157 @@ function PrescriptionPage() {
     text: settings?.theme_text || "#0f172a",
   };
 
-  // A4 landscape, two prescription slips per sheet
-  // Each slip: ~148mm wide × ~200mm tall (half of A4 landscape minus margins/gap)
-
-  const Slip = () => (
-    <div
-      className="rx-slip relative flex flex-col overflow-hidden rounded-md border"
-      style={{ background: t.bg, color: t.text, borderColor: `${t.accent}40` }}
-    >
-      {settings?.logo_url && (
-        <img
-          src={settings.logo_url}
-          alt=""
-          aria-hidden
-          className="pointer-events-none absolute inset-0 m-auto h-[55%] w-auto max-w-[60%] object-contain opacity-[0.04]"
-        />
-      )}
-
-      {/* HEADER */}
-      <div
-        className="relative p-4"
-        style={{ background: `linear-gradient(135deg, ${t.header}, ${t.accent})`, color: "#ffffff" }}
-      >
-        <div className="flex items-start justify-between gap-3">
-          <div className="flex items-center gap-3">
-            {settings?.logo_url && (
-              <img
-                src={settings.logo_url}
-                alt="logo"
-                className="h-14 w-14 object-contain"
-                style={{ filter: "drop-shadow(0 2px 4px rgba(0,0,0,0.25))" }}
-              />
-            )}
-            <div>
-              <div className="text-[9px] uppercase tracking-widest opacity-75">Doctor</div>
-              <div className="text-lg font-extrabold leading-tight">د. {settings?.doctor_name || "—"}</div>
-              <div className="text-[11px] opacity-90">{settings?.specialty || ""}</div>
-            </div>
-          </div>
-          <div className="text-left">
-            <div className="text-[9px] uppercase tracking-widest opacity-75">Date</div>
-            <div className="text-xs font-semibold" dir="ltr">{new Date().toLocaleDateString("ar-EG")}</div>
-            {settings?.clinic_name && <div className="mt-1 text-[10px] opacity-90">{settings.clinic_name}</div>}
-          </div>
-        </div>
-      </div>
-
-      {/* PATIENT */}
-      <div
-        className="grid grid-cols-2 gap-2 border-b p-3 text-xs"
-        style={{ background: `${t.accent}10`, borderColor: `${t.accent}30` }}
-      >
-        <Info label="المراجع" value={patient.full_name} />
-        <Info label="العمر" value={patient.age ?? "—"} />
-        <Info label="الجنس" value={patient.gender ?? "—"} />
-        <Info label="الهاتف" value={patient.phone ?? "—"} ltr />
-      </div>
-
-      {/* BODY */}
-      <div className="flex-1 p-4">
-        <h3 className="mb-2 text-sm font-bold" style={{ color: t.accent }}>℞ الوصفة الطبية</h3>
-        <div className="rounded-md border-2 overflow-hidden" style={{ borderColor: `${t.accent}55` }}>
-          <div
-            className="border-b px-3 py-1.5 font-mono text-sm font-bold"
-            style={{ background: `${t.header}15`, color: t.accent, borderColor: `${t.accent}30` }}
-            dir="ltr"
-          >
-            {rxPrefix}
-          </div>
-          <pre
-            dir="ltr"
-            contentEditable
-            suppressContentEditableWarning
-            onBlur={(e) => setBody(e.currentTarget.innerText.replace(/\n$/, ""))}
-            data-placeholder="Write medications, dosage, instructions..."
-            className="rx-editable m-0 min-h-[140px] whitespace-pre-wrap p-3 font-mono leading-relaxed outline-none focus:bg-yellow-50/30"
-            style={{ background: t.bg, color: t.text, textAlign: "left", fontSize: `${settings?.font_size || 14}px` }}
-          >
-            {body}
-          </pre>
-        </div>
-      </div>
-
-      {/* FOOTER */}
-      <div
-        className="relative border-t p-3"
-        style={{ background: `${t.accent}08`, borderColor: `${t.accent}30` }}
-      >
-        <div className="flex items-center justify-between gap-3">
-          <div className="flex-1 text-right text-[10px]">
-            <div className="font-semibold">{settings?.clinic_name || ""}</div>
-            <div className="mt-0.5 opacity-70">{settings?.clinic_address || ""}</div>
-            <div className="mt-0.5 flex flex-wrap gap-2 opacity-70">
-              {settings?.clinic_phone && <span>📞 <span dir="ltr">{settings.clinic_phone}</span></span>}
-              {settings?.working_hours && <span>🕐 {settings.working_hours}</span>}
-            </div>
-            {settings?.footer_note && <div className="mt-1 italic opacity-80">{settings.footer_note}</div>}
-          </div>
-          {prescriptionId && (
-            <div className="flex flex-col items-center gap-0.5 rounded-md bg-white p-1.5" style={{ border: `1px solid ${t.accent}30` }}>
-              <QRCodeSVG
-                value={`${typeof window !== "undefined" ? window.location.origin : ""}/verify/${prescriptionId}`}
-                size={64}
-                level="M"
-                includeMargin={false}
-                fgColor={t.accent}
-              />
-              <div className="flex items-center gap-1 text-[8px] text-slate-600">
-                <ShieldCheck className="h-2.5 w-2.5" /><span>تحقق</span>
-              </div>
-            </div>
-          )}
-        </div>
-      </div>
-    </div>
-  );
+  const printSize = settings?.print_size === "A4" ? "A4" : "A5";
 
   return (
     <div className="min-h-screen bg-background">
       <AppHeader />
       <style>{`
-        @page { size: A5 portrait; margin: 6mm; }
+        @page { size: ${printSize} portrait; margin: 8mm; }
         @media print {
-          html, body { background: #fff !important; margin: 0 !important; padding: 0 !important; }
+          html, body { background: #fff !important; }
           body * { visibility: hidden; }
           .print-area, .print-area * { visibility: visible; }
           .print-area {
             position: absolute; left: 0; top: 0;
-            width: 148mm; height: 210mm;
-            margin: 0; padding: 0 !important;
-            display: block !important;
+            width: ${printSize === "A4" ? "210mm" : "148mm"};
+            margin: 0 auto;
+            box-shadow: none !important;
+            border: none !important;
             -webkit-print-color-adjust: exact;
             print-color-adjust: exact;
-          }
-          .print-area .rx-slip {
-            width: 100% !important;
-            height: 100% !important;
-            border: none !important;
-            border-radius: 0 !important;
-            box-shadow: none !important;
-            break-inside: avoid;
           }
           .no-print { display: none !important; }
         }
       `}</style>
-      <main className="container mx-auto max-w-6xl p-4 md:p-8">
+      <main className="container mx-auto max-w-4xl p-4 md:p-8">
         <div className="mb-4 flex flex-wrap items-center justify-between gap-2 no-print">
           <Link to="/doctor"><Button variant="ghost"><ArrowRight className="ml-1 h-4 w-4" />العودة</Button></Link>
           <div className="flex items-center gap-2">
-            <span className="rounded-md border bg-muted/40 px-2 py-1 text-xs text-muted-foreground">A5 عمودي • وصفة واحدة لكل ورقة</span>
+            <span className="rounded-md border bg-muted/40 px-2 py-1 text-xs text-muted-foreground">حجم الطباعة: {printSize}</span>
             <Button variant="outline" onClick={save} disabled={saving}>{saving ? <Loader2 className="ml-1 h-4 w-4 animate-spin" /> : <Save className="ml-1 h-4 w-4" />}حفظ</Button>
             <Button variant="outline" onClick={() => window.print()}><Printer className="ml-1 h-4 w-4" />طباعة</Button>
             <Button onClick={() => window.print()}><Download className="ml-1 h-4 w-4" />تصدير PDF</Button>
           </div>
         </div>
 
-        {/* Preview = print area (A5 portrait, single slip, inline-editable) */}
-        <div className="mb-2 flex items-center justify-between no-print">
-          <h2 className="text-sm font-semibold text-muted-foreground">الوصفة الطبية — انقر داخل منطقة الأدوية للكتابة مباشرة</h2>
-        </div>
-        <div className="overflow-x-auto no-print-scroll">
+        <Card className="print-area overflow-hidden shadow-elegant relative" style={{ background: t.bg, color: t.text }}>
+          {/* Watermark logo (subtle, behind content) */}
+          {settings?.logo_url && (
+            <img
+              src={settings.logo_url}
+              alt=""
+              aria-hidden
+              className="pointer-events-none absolute inset-0 m-auto h-[60%] w-auto max-w-[60%] object-contain opacity-[0.04]"
+            />
+          )}
+
+          {/* HEADER — logo blends transparently into the gradient */}
           <div
-            className="print-area mx-auto bg-white shadow-elegant"
-            style={{ width: "148mm", height: "210mm" }}
+            className="relative p-6"
+            style={{ background: `linear-gradient(135deg, ${t.header}, ${t.accent})`, color: "#ffffff" }}
           >
-            <Slip />
+            <div className="flex flex-wrap items-center justify-between gap-4">
+              <div className="flex items-center gap-4">
+                {settings?.logo_url && (
+                  <img
+                    src={settings.logo_url}
+                    alt="logo"
+                    className="h-20 w-20 object-contain drop-shadow-lg"
+                    style={{ filter: "drop-shadow(0 2px 4px rgba(0,0,0,0.25))" }}
+                  />
+                )}
+                <div>
+                  <div className="text-[10px] uppercase tracking-widest opacity-75">Doctor</div>
+                  <div className="text-2xl font-extrabold leading-tight">د. {settings?.doctor_name || "—"}</div>
+                  <div className="text-sm opacity-90">{settings?.specialty || ""}</div>
+                </div>
+              </div>
+              <div className="text-left">
+                <div className="text-[10px] uppercase tracking-widest opacity-75">Date</div>
+                <div className="font-semibold" dir="ltr">{new Date().toLocaleDateString("ar-EG")}</div>
+                {settings?.clinic_name && (
+                  <div className="mt-1 text-xs opacity-90">{settings.clinic_name}</div>
+                )}
+              </div>
+            </div>
           </div>
-        </div>
+
+          {/* PATIENT INFO */}
+          <div
+            className="grid grid-cols-2 gap-3 border-b p-4 md:grid-cols-4"
+            style={{ background: `${t.accent}10`, borderColor: `${t.accent}30` }}
+          >
+            <Info label="المراجع" value={patient.full_name} />
+            <Info label="العمر" value={patient.age ?? "—"} />
+            <Info label="الجنس" value={patient.gender ?? "—"} />
+            <Info label="الهاتف" value={patient.phone ?? "—"} ltr />
+          </div>
+
+          {/* PRESCRIPTION BODY */}
+          <div className="p-6">
+            <h3 className="mb-2 text-lg font-bold" style={{ color: t.accent }}>℞ الوصفة الطبية</h3>
+
+            <div
+              className="rounded-md border-2 overflow-hidden"
+              style={{ borderColor: `${t.accent}55` }}
+            >
+              {/* RX prefix - always present, non-editable */}
+              <div
+                className="border-b px-3 py-2 font-mono text-base font-bold"
+                style={{ background: `${t.header}15`, color: t.accent, borderColor: `${t.accent}30` }}
+                dir="ltr"
+              >
+                {rxPrefix}
+              </div>
+              <Textarea
+                dir="ltr"
+                value={body}
+                onChange={(e) => setBody(e.target.value)}
+                placeholder="Write medications, dosage, instructions..."
+                className="min-h-[280px] resize-none rounded-none border-0 font-mono leading-relaxed focus-visible:ring-0"
+                style={{ background: t.bg, color: t.text, textAlign: "left", fontSize: `${settings?.font_size || 16}px` }}
+              />
+            </div>
+          </div>
+
+          {/* CLINIC FOOTER + QR */}
+          <div
+            className="relative border-t p-4"
+            style={{ background: `${t.accent}08`, borderColor: `${t.accent}30` }}
+          >
+            <div className="flex flex-wrap items-center justify-between gap-4">
+              <div className="flex-1 min-w-[200px] text-center sm:text-right">
+                <div className="font-semibold">{settings?.clinic_name || ""}</div>
+                <div className="mt-1 text-xs opacity-70">{settings?.clinic_address || ""}</div>
+                <div className="mt-1 flex flex-wrap justify-center gap-3 text-xs opacity-70 sm:justify-start">
+                  {settings?.clinic_phone && <span>📞 <span dir="ltr">{settings.clinic_phone}</span></span>}
+                  {settings?.working_hours && <span>🕐 {settings.working_hours}</span>}
+                </div>
+                {settings?.footer_note && <div className="mt-2 text-xs italic opacity-80">{settings.footer_note}</div>}
+              </div>
+              {prescriptionId ? (
+                <div className="flex flex-col items-center gap-1 rounded-md bg-white p-2" style={{ border: `1px solid ${t.accent}30` }}>
+                  <QRCodeSVG
+                    value={`${typeof window !== "undefined" ? window.location.origin : ""}/verify/${prescriptionId}`}
+                    size={settings?.qr_size || 84}
+                    level="M"
+                    includeMargin={false}
+                    fgColor={t.accent}
+                  />
+                  <div className="flex items-center gap-1 text-[9px] text-slate-600">
+                    <ShieldCheck className="h-3 w-3" />
+                    <span>تحقق من الوصفة</span>
+                  </div>
+                </div>
+              ) : (
+                <div className="flex h-[100px] w-[100px] items-center justify-center rounded-md border-2 border-dashed text-[9px] text-muted-foreground no-print" style={{ borderColor: `${t.accent}30` }}>
+                  احفظ الوصفة<br />ليظهر QR
+                </div>
+              )}
+            </div>
+          </div>
+        </Card>
       </main>
     </div>
   );
