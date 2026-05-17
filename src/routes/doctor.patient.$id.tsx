@@ -201,20 +201,24 @@ function PrescriptionPage() {
     <div className="min-h-screen bg-background">
       <AppHeader />
       <style>{`
-        @page { size: A4 landscape; margin: 8mm; }
+        @page { size: A5 portrait; margin: 6mm; }
         @media print {
-          html, body { background: #fff !important; }
+          html, body { background: #fff !important; margin: 0 !important; padding: 0 !important; }
           body * { visibility: hidden; }
           .print-area, .print-area * { visibility: visible; }
           .print-area {
             position: absolute; left: 0; top: 0;
-            width: 281mm; height: 194mm;
-            margin: 0;
+            width: 148mm; height: 210mm;
+            margin: 0; padding: 0 !important;
+            display: block !important;
             -webkit-print-color-adjust: exact;
             print-color-adjust: exact;
           }
           .print-area .rx-slip {
-            border: 1px dashed #cbd5e1 !important;
+            width: 100% !important;
+            height: 100% !important;
+            border: none !important;
+            border-radius: 0 !important;
             box-shadow: none !important;
             break-inside: avoid;
           }
