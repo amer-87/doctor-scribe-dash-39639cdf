@@ -229,7 +229,7 @@ function PrescriptionPage() {
         <div className="mb-4 flex flex-wrap items-center justify-between gap-2 no-print">
           <Link to="/doctor"><Button variant="ghost"><ArrowRight className="ml-1 h-4 w-4" />العودة</Button></Link>
           <div className="flex items-center gap-2">
-            <span className="rounded-md border bg-muted/40 px-2 py-1 text-xs text-muted-foreground">A4 أفقي • وصفتان لكل ورقة</span>
+            <span className="rounded-md border bg-muted/40 px-2 py-1 text-xs text-muted-foreground">A5 عمودي • وصفة واحدة لكل ورقة</span>
             <Button variant="outline" onClick={save} disabled={saving}>{saving ? <Loader2 className="ml-1 h-4 w-4 animate-spin" /> : <Save className="ml-1 h-4 w-4" />}حفظ</Button>
             <Button variant="outline" onClick={() => window.print()}><Printer className="ml-1 h-4 w-4" />طباعة</Button>
             <Button onClick={() => window.print()}><Download className="ml-1 h-4 w-4" />تصدير PDF</Button>
