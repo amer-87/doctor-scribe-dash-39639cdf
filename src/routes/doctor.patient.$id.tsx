@@ -264,7 +264,7 @@ function PrescriptionPage() {
         <div className="overflow-x-auto no-print-scroll">
           <div
             className="print-area mx-auto bg-white shadow-elegant"
-            style={{ width: "281mm", height: "194mm", padding: "0", display: "grid", gridTemplateColumns: "1fr 1fr", gap: "10mm", padding: "4mm" }}
+            style={{ width: "281mm", height: "194mm", display: "grid", gridTemplateColumns: "1fr 1fr", gap: "10mm", padding: "4mm" }}
           >
             <Slip />
             <Slip />
