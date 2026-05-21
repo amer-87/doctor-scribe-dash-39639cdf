@@ -28,7 +28,6 @@ interface Form {
   logo_url: string | null; rx_prefix: string;
   theme_header: string; theme_accent: string; theme_bg: string; theme_text: string;
   font_size: number; qr_size: number; footer_note: string;
-  print_size: "A4" | "A5";
 }
 
 const DEFAULT_FORM: Form = {
@@ -37,8 +36,8 @@ const DEFAULT_FORM: Form = {
   theme_header: "#0ea5e9", theme_accent: "#0369a1",
   theme_bg: "#ffffff", theme_text: "#0f172a",
   font_size: 16, qr_size: 84, footer_note: "",
-  print_size: "A5",
 };
+
 
 const PRESETS = [
   { name: "أزرق طبي", header: "#0ea5e9", accent: "#0369a1", bg: "#ffffff", text: "#0f172a" },
