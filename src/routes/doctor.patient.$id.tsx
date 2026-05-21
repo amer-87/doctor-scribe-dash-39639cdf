@@ -22,8 +22,8 @@ interface Settings {
   logo_url: string | null; rx_prefix: string;
   theme_header: string; theme_accent: string; theme_bg: string; theme_text: string;
   font_size?: number; qr_size?: number; footer_note?: string;
-  print_size?: "A4" | "A5";
 }
+
 
 function PrescriptionPage() {
   const { id } = useParams({ from: "/doctor/patient/$id" });
