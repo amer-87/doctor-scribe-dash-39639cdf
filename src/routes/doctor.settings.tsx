@@ -124,24 +124,12 @@ function Settings() {
                 <Card>
                   <CardHeader><CardTitle>تخصيص التصميم</CardTitle></CardHeader>
                   <CardContent className="space-y-5">
-                    <div className="grid gap-4 md:grid-cols-2">
-                      <div>
-                        <Label>بادئة الوصفة (Rx)</Label>
-                        <Input value={form.rx_prefix} onChange={(e) => set("rx_prefix", e.target.value)} dir="ltr" placeholder="Rx" className="font-mono" />
-                      </div>
-                      <div>
-                        <Label className="mb-2 block">حجم ورقة الطباعة</Label>
-                        <div className="grid grid-cols-2 gap-2">
-                          {(["A5", "A4"] as const).map((sz) => (
-                            <button key={sz} type="button" onClick={() => set("print_size", sz)}
-                              className={`rounded-md border-2 p-3 text-sm transition ${form.print_size === sz ? "border-primary bg-primary/5 font-bold text-primary" : "border-border hover:border-primary/50"}`}>
-                              <div className="font-mono text-base">{sz}</div>
-                              <div className="text-[10px] opacity-70">{sz === "A5" ? "نصف ورقة (148×210mm)" : "ورقة كاملة (210×297mm)"}</div>
-                            </button>
-                          ))}
-                        </div>
-                      </div>
+                    <div>
+                      <Label>بادئة الوصفة (Rx)</Label>
+                      <Input value={form.rx_prefix} onChange={(e) => set("rx_prefix", e.target.value)} dir="ltr" placeholder="Rx" className="font-mono" />
+                      <p className="mt-2 text-[11px] text-muted-foreground">الطباعة تتم على ورقة A4 افتراضياً. يمكنك تغيير حجم الورق من إعدادات الطابعة عند الطباعة.</p>
                     </div>
+
 
                     <div>
                       <Label className="mb-2 block">قوالب جاهزة</Label>
