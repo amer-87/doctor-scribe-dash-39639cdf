@@ -85,20 +85,19 @@ function PrescriptionPage() {
     text: settings?.theme_text || "#0f172a",
   };
 
-  const printSize = settings?.print_size === "A4" ? "A4" : "A5";
-
   return (
     <div className="min-h-screen bg-background">
       <AppHeader />
       <style>{`
-        @page { size: ${printSize} portrait; margin: 8mm; }
+        @page { size: A4 portrait; margin: 12mm; }
         @media print {
           html, body { background: #fff !important; }
           body * { visibility: hidden; }
           .print-area, .print-area * { visibility: visible; }
           .print-area {
-            position: absolute; left: 0; top: 0;
-            width: ${printSize === "A4" ? "210mm" : "148mm"};
+            position: absolute; left: 0; top: 0; right: 0;
+            width: 100%;
+            max-width: 186mm;
             margin: 0 auto;
             box-shadow: none !important;
             border: none !important;
@@ -112,7 +111,8 @@ function PrescriptionPage() {
         <div className="mb-4 flex flex-wrap items-center justify-between gap-2 no-print">
           <Link to="/doctor"><Button variant="ghost"><ArrowRight className="ml-1 h-4 w-4" />العودة</Button></Link>
           <div className="flex items-center gap-2">
-            <span className="rounded-md border bg-muted/40 px-2 py-1 text-xs text-muted-foreground">حجم الطباعة: {printSize}</span>
+            <span className="rounded-md border bg-muted/40 px-2 py-1 text-xs text-muted-foreground">حجم الطباعة: A4</span>
+
             <Button variant="outline" onClick={save} disabled={saving}>{saving ? <Loader2 className="ml-1 h-4 w-4 animate-spin" /> : <Save className="ml-1 h-4 w-4" />}حفظ</Button>
             <Button variant="outline" onClick={() => window.print()}><Printer className="ml-1 h-4 w-4" />طباعة</Button>
             <Button onClick={() => window.print()}><Download className="ml-1 h-4 w-4" />تصدير PDF</Button>
