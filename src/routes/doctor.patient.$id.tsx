@@ -10,6 +10,7 @@ import { Textarea } from "@/components/ui/textarea";
 import { ArrowRight, Printer, Save, Download, Loader2, ShieldCheck } from "lucide-react";
 import { toast } from "sonner";
 import { QRCodeSVG } from "qrcode.react";
+import { splitSpecialty } from "@/components/PrescriptionPreview";
 
 export const Route = createFileRoute("/doctor/patient/$id")({
   component: () => <RequireAuth allow={["doctor"]}><PrescriptionPage /></RequireAuth>,
@@ -130,33 +131,34 @@ function PrescriptionPage() {
             />
           )}
 
-          {/* HEADER — logo blends transparently into the gradient */}
+          {/* HEADER — logo right, doctor name + specialty center, date left */}
           <div
-            className="relative p-6"
+            className="relative p-5"
             style={{ background: `linear-gradient(135deg, ${t.header}, ${t.accent})`, color: "#ffffff" }}
           >
-            <div className="flex flex-wrap items-center justify-between gap-4">
-              <div className="flex items-center gap-4">
+            <div className="grid grid-cols-3 items-center gap-3">
+              <div className="flex justify-start">
                 {settings?.logo_url && (
                   <img
                     src={settings.logo_url}
                     alt="logo"
-                    className="h-20 w-20 object-contain drop-shadow-lg"
+                    className="h-20 w-20 object-contain"
                     style={{ filter: "drop-shadow(0 2px 4px rgba(0,0,0,0.25))" }}
                   />
                 )}
-                <div>
-                  <div className="text-[10px] uppercase tracking-widest opacity-75">Doctor</div>
-                  <div className="text-2xl font-extrabold leading-tight">د. {settings?.doctor_name || "—"}</div>
-                  <div className="text-sm opacity-90">{settings?.specialty || ""}</div>
+              </div>
+              <div className="text-center">
+                <div className="text-[10px] uppercase tracking-widest opacity-75">Doctor</div>
+                <div className="text-2xl font-extrabold leading-tight">د. {settings?.doctor_name || "—"}</div>
+                <div className="mt-1 space-y-0.5 text-sm opacity-90">
+                  {splitSpecialty(settings?.specialty || "", 4).map((l, i) => (
+                    <div key={i}>{l}</div>
+                  ))}
                 </div>
               </div>
               <div className="text-left">
                 <div className="text-[10px] uppercase tracking-widest opacity-75">Date</div>
                 <div className="font-semibold" dir="ltr">{new Date().toLocaleDateString("ar-EG")}</div>
-                {settings?.clinic_name && (
-                  <div className="mt-1 text-xs opacity-90">{settings.clinic_name}</div>
-                )}
               </div>
             </div>
           </div>
@@ -172,7 +174,7 @@ function PrescriptionPage() {
             <Info label="الهاتف" value={patient.phone ?? "—"} ltr />
           </div>
 
-          {/* PRESCRIPTION BODY */}
+          {/* PRESCRIPTION BODY — large writing area */}
           <div className="p-6">
             <h3 className="mb-2 text-lg font-bold" style={{ color: t.accent }}>℞ الوصفة الطبية</h3>
 
@@ -180,7 +182,6 @@ function PrescriptionPage() {
               className="rounded-md border-2 overflow-hidden"
               style={{ borderColor: `${t.accent}55` }}
             >
-              {/* RX prefix - always present, non-editable */}
               <div
                 className="border-b px-3 py-2 font-mono text-base font-bold"
                 style={{ background: `${t.header}15`, color: t.accent, borderColor: `${t.accent}30` }}
@@ -193,22 +194,24 @@ function PrescriptionPage() {
                 value={body}
                 onChange={(e) => setBody(e.target.value)}
                 placeholder="Write medications, dosage, instructions..."
-                className="min-h-[280px] resize-none rounded-none border-0 font-mono leading-relaxed focus-visible:ring-0"
+                className="min-h-[480px] resize-none rounded-none border-0 font-mono leading-relaxed focus-visible:ring-0"
                 style={{ background: t.bg, color: t.text, textAlign: "left", fontSize: `${settings?.font_size || 16}px` }}
               />
             </div>
           </div>
 
-          {/* CLINIC FOOTER + QR */}
+          {/* CLINIC FOOTER — phone, address, QR */}
           <div
             className="relative border-t p-4"
             style={{ background: `${t.accent}08`, borderColor: `${t.accent}30` }}
           >
             <div className="flex flex-wrap items-center justify-between gap-4">
               <div className="flex-1 min-w-[200px] text-center sm:text-right">
-                <div className="font-semibold">{settings?.clinic_name || ""}</div>
-                <div className="mt-1 text-xs opacity-70">{settings?.clinic_address || ""}</div>
-                <div className="mt-1 flex flex-wrap justify-center gap-3 text-xs opacity-70 sm:justify-start">
+                {settings?.clinic_name && <div className="font-semibold">{settings.clinic_name}</div>}
+                {settings?.clinic_address && (
+                  <div className="mt-1 text-xs opacity-80">📍 {settings.clinic_address}</div>
+                )}
+                <div className="mt-1 flex flex-wrap justify-center gap-3 text-xs opacity-80 sm:justify-start">
                   {settings?.clinic_phone && <span>📞 <span dir="ltr">{settings.clinic_phone}</span></span>}
                   {settings?.working_hours && <span>🕐 {settings.working_hours}</span>}
                 </div>
