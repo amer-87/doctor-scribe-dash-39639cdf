@@ -88,19 +88,22 @@ function DoctorDashboard() {
   const weekEnd = addDaysISO(7);
 
   const getDate = (p: Patient) => p.appointment_date ?? p.created_at.slice(0, 10);
-  // Doctor only sees patients sent by secretary (or self-added)
+  // Doctor sees ALL patients (sent or not). Sent + pending bubble to top, done sinks to bottom.
   const queueSort = (a: Patient, b: Patient) => {
-    const aDone = (a.status ?? "pending") === "done" ? 1 : 0;
-    const bDone = (b.status ?? "pending") === "done" ? 1 : 0;
+    const aDone = (a.status ?? "pending") === "done" ? 2 : 0;
+    const bDone = (b.status ?? "pending") === "done" ? 2 : 0;
     if (aDone !== bDone) return aDone - bDone;
-    const aT = a.sent_at ?? a.created_at;
-    const bT = b.sent_at ?? b.created_at;
+    const aSent = a.sent_at ? 0 : 1;
+    const bSent = b.sent_at ? 0 : 1;
+    if (aSent !== bSent) return aSent - bSent;
+    const aT = a.sent_at ?? a.appointment_time ?? a.created_at;
+    const bT = b.sent_at ?? b.appointment_time ?? b.created_at;
     return aT.localeCompare(bT);
   };
-  const todayPatients = patients.filter((p) => getDate(p) === today && p.sent_at).sort(queueSort);
-  const tomorrowPatients = patients.filter((p) => getDate(p) === tomorrow);
-  const weekPatients = patients.filter((p) => { const d = getDate(p); return d >= today && d <= weekEnd; });
-  const upcomingPatients = patients.filter((p) => getDate(p) > today);
+  const todayPatients = patients.filter((p) => getDate(p) === today).sort(queueSort);
+  const tomorrowPatients = patients.filter((p) => getDate(p) === tomorrow).sort(queueSort);
+  const weekPatients = patients.filter((p) => { const d = getDate(p); return d >= today && d <= weekEnd; }).sort(queueSort);
+  const upcomingPatients = patients.filter((p) => getDate(p) > today).sort(queueSort);
 
   const pendingSecs = secretaries.filter((s) => s.status === "pending");
   const setSecStatus = async (id: string, status: "approved" | "rejected") => {
