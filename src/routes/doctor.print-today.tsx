@@ -36,7 +36,7 @@ function PrintTodayPage() {
       setSettings(s as any);
       // Order patients to match ids param
       const map = new Map((ps as Patient[] ?? []).map((p) => [p.id, p]));
-      setPatients(idList.map((i) => map.get(i)).filter(Boolean) as Patient[]);
+      setPatients(idList.map((i: string) => map.get(i)).filter(Boolean) as Patient[]);
       // Keep latest prescription per patient
       const byPat: Record<string, Prescription> = {};
       (pr as any[] ?? []).forEach((row) => {

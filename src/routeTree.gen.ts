@@ -18,6 +18,7 @@ import { Route as IndexRouteImport } from './routes/index'
 import { Route as DoctorIndexRouteImport } from './routes/doctor.index'
 import { Route as VerifyIdRouteImport } from './routes/verify.$id'
 import { Route as DoctorSettingsRouteImport } from './routes/doctor.settings'
+import { Route as DoctorPrintTodayRouteImport } from './routes/doctor.print-today'
 import { Route as DoctorPatientIdRouteImport } from './routes/doctor.patient.$id'
 
 const SecretaryRoute = SecretaryRouteImport.update({
@@ -65,6 +66,11 @@ const DoctorSettingsRoute = DoctorSettingsRouteImport.update({
   path: '/doctor/settings',
   getParentRoute: () => rootRouteImport,
 } as any)
+const DoctorPrintTodayRoute = DoctorPrintTodayRouteImport.update({
+  id: '/doctor/print-today',
+  path: '/doctor/print-today',
+  getParentRoute: () => rootRouteImport,
+} as any)
 const DoctorPatientIdRoute = DoctorPatientIdRouteImport.update({
   id: '/doctor/patient/$id',
   path: '/doctor/patient/$id',
@@ -78,6 +84,7 @@ export interface FileRoutesByFullPath {
   '/auth': typeof AuthRoute
   '/pending': typeof PendingRoute
   '/secretary': typeof SecretaryRoute
+  '/doctor/print-today': typeof DoctorPrintTodayRoute
   '/doctor/settings': typeof DoctorSettingsRoute
   '/verify/$id': typeof VerifyIdRoute
   '/doctor/': typeof DoctorIndexRoute
@@ -90,6 +97,7 @@ export interface FileRoutesByTo {
   '/auth': typeof AuthRoute
   '/pending': typeof PendingRoute
   '/secretary': typeof SecretaryRoute
+  '/doctor/print-today': typeof DoctorPrintTodayRoute
   '/doctor/settings': typeof DoctorSettingsRoute
   '/verify/$id': typeof VerifyIdRoute
   '/doctor': typeof DoctorIndexRoute
@@ -103,6 +111,7 @@ export interface FileRoutesById {
   '/auth': typeof AuthRoute
   '/pending': typeof PendingRoute
   '/secretary': typeof SecretaryRoute
+  '/doctor/print-today': typeof DoctorPrintTodayRoute
   '/doctor/settings': typeof DoctorSettingsRoute
   '/verify/$id': typeof VerifyIdRoute
   '/doctor/': typeof DoctorIndexRoute
@@ -117,6 +126,7 @@ export interface FileRouteTypes {
     | '/auth'
     | '/pending'
     | '/secretary'
+    | '/doctor/print-today'
     | '/doctor/settings'
     | '/verify/$id'
     | '/doctor/'
@@ -129,6 +139,7 @@ export interface FileRouteTypes {
     | '/auth'
     | '/pending'
     | '/secretary'
+    | '/doctor/print-today'
     | '/doctor/settings'
     | '/verify/$id'
     | '/doctor'
@@ -141,6 +152,7 @@ export interface FileRouteTypes {
     | '/auth'
     | '/pending'
     | '/secretary'
+    | '/doctor/print-today'
     | '/doctor/settings'
     | '/verify/$id'
     | '/doctor/'
@@ -154,6 +166,7 @@ export interface RootRouteChildren {
   AuthRoute: typeof AuthRoute
   PendingRoute: typeof PendingRoute
   SecretaryRoute: typeof SecretaryRoute
+  DoctorPrintTodayRoute: typeof DoctorPrintTodayRoute
   DoctorSettingsRoute: typeof DoctorSettingsRoute
   VerifyIdRoute: typeof VerifyIdRoute
   DoctorIndexRoute: typeof DoctorIndexRoute
@@ -225,6 +238,13 @@ declare module '@tanstack/react-router' {
       preLoaderRoute: typeof DoctorSettingsRouteImport
       parentRoute: typeof rootRouteImport
     }
+    '/doctor/print-today': {
+      id: '/doctor/print-today'
+      path: '/doctor/print-today'
+      fullPath: '/doctor/print-today'
+      preLoaderRoute: typeof DoctorPrintTodayRouteImport
+      parentRoute: typeof rootRouteImport
+    }
     '/doctor/patient/$id': {
       id: '/doctor/patient/$id'
       path: '/doctor/patient/$id'
@@ -242,6 +262,7 @@ const rootRouteChildren: RootRouteChildren = {
   AuthRoute: AuthRoute,
   PendingRoute: PendingRoute,
   SecretaryRoute: SecretaryRoute,
+  DoctorPrintTodayRoute: DoctorPrintTodayRoute,
   DoctorSettingsRoute: DoctorSettingsRoute,
   VerifyIdRoute: VerifyIdRoute,
   DoctorIndexRoute: DoctorIndexRoute,
