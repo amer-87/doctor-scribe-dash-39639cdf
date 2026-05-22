@@ -1,4 +1,4 @@
-import { createFileRoute, Link, useParams } from "@tanstack/react-router";
+import { createFileRoute, Link, useParams, useNavigate } from "@tanstack/react-router";
 import { RequireAuth } from "@/components/RequireAuth";
 import { AppHeader } from "@/components/AppHeader";
 import { useEffect, useMemo, useState } from "react";
@@ -7,7 +7,7 @@ import { useAuth } from "@/hooks/use-auth";
 import { Card } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
 import { Textarea } from "@/components/ui/textarea";
-import { ArrowRight, Printer, Save, Download, Loader2, ShieldCheck } from "lucide-react";
+import { ArrowRight, Printer, Loader2, ShieldCheck, CheckCircle2, Paperclip } from "lucide-react";
 import { toast } from "sonner";
 import { QRCodeSVG } from "qrcode.react";
 import { splitSpecialty } from "@/components/PrescriptionPreview";
@@ -16,7 +16,10 @@ export const Route = createFileRoute("/doctor/patient/$id")({
   component: () => <RequireAuth allow={["doctor"]}><PrescriptionPage /></RequireAuth>,
 });
 
-interface Patient { id: string; full_name: string; age: number | null; gender: string | null; phone: string | null; }
+interface Patient {
+  id: string; full_name: string; age: number | null; gender: string | null; phone: string | null;
+  status: string | null; attachments: string[] | null;
+}
 interface Settings {
   doctor_name: string; specialty: string; clinic_name: string;
   clinic_address: string; clinic_phone: string; working_hours: string;
@@ -28,12 +31,13 @@ interface Settings {
 
 function PrescriptionPage() {
   const { id } = useParams({ from: "/doctor/patient/$id" });
+  const navigate = useNavigate();
   const { user } = useAuth();
   const [patient, setPatient] = useState<Patient | null>(null);
   const [settings, setSettings] = useState<Settings | null>(null);
   const [body, setBody] = useState("");
   const [prescriptionId, setPrescriptionId] = useState<string | null>(null);
-  const [saving, setSaving] = useState(false);
+  const [finishing, setFinishing] = useState(false);
   const [loading, setLoading] = useState(true);
 
   const rxPrefix = settings?.rx_prefix || "Rx";
@@ -52,7 +56,6 @@ function PrescriptionPage() {
         setPrescriptionId(presc.id);
         const prefix = (s as any)?.rx_prefix || "Rx";
         const c = presc.content || "";
-        // Strip prefix line for editing if present
         const stripped = c.startsWith(prefix + "\n") ? c.slice(prefix.length + 1) : c;
         setBody(stripped);
       }
@@ -62,18 +65,32 @@ function PrescriptionPage() {
 
   const fullContent = useMemo(() => `${rxPrefix}\n${body}`, [rxPrefix, body]);
 
-  const save = async () => {
-    if (!user || !patient) return;
-    setSaving(true);
+  const savePrescription = async () => {
+    if (!user || !patient) return null;
     if (prescriptionId) {
       const { error } = await supabase.from("prescriptions").update({ content: fullContent }).eq("id", prescriptionId);
-      if (error) toast.error(error.message); else toast.success("تم الحفظ");
+      if (error) { toast.error(error.message); return null; }
+      return prescriptionId;
     } else {
       const { data, error } = await supabase.from("prescriptions").insert({ patient_id: id, doctor_id: user.id, content: fullContent }).select().single();
-      if (error) toast.error(error.message);
-      else { setPrescriptionId(data.id); toast.success("تم الحفظ"); }
+      if (error) { toast.error(error.message); return null; }
+      setPrescriptionId(data.id);
+      return data.id;
     }
-    setSaving(false);
+  };
+
+  const markDone = async () => {
+    setFinishing(true);
+    const saved = await savePrescription();
+    if (saved) {
+      const { error } = await supabase.from("patients").update({ status: "done" }).eq("id", id);
+      if (error) toast.error(error.message);
+      else {
+        toast.success("تم الفحص — انتقل للمراجع التالي");
+        navigate({ to: "/doctor" });
+      }
+    }
+    setFinishing(false);
   };
 
   if (loading) return <div className="flex h-screen items-center justify-center"><Loader2 className="h-8 w-8 animate-spin text-primary" /></div>;
@@ -85,6 +102,8 @@ function PrescriptionPage() {
     bg: settings?.theme_bg || "#ffffff",
     text: settings?.theme_text || "#0f172a",
   };
+
+  const isDone = patient.status === "done";
 
   return (
     <div className="min-h-screen bg-background">
@@ -112,16 +131,34 @@ function PrescriptionPage() {
         <div className="mb-4 flex flex-wrap items-center justify-between gap-2 no-print">
           <Link to="/doctor"><Button variant="ghost"><ArrowRight className="ml-1 h-4 w-4" />العودة</Button></Link>
           <div className="flex items-center gap-2">
-            <span className="rounded-md border bg-muted/40 px-2 py-1 text-xs text-muted-foreground">حجم الطباعة: A4</span>
-
-            <Button variant="outline" onClick={save} disabled={saving}>{saving ? <Loader2 className="ml-1 h-4 w-4 animate-spin" /> : <Save className="ml-1 h-4 w-4" />}حفظ</Button>
             <Button variant="outline" onClick={() => window.print()}><Printer className="ml-1 h-4 w-4" />طباعة</Button>
-            <Button onClick={() => window.print()}><Download className="ml-1 h-4 w-4" />تصدير PDF</Button>
+            <Button
+              onClick={markDone}
+              disabled={finishing || isDone}
+              className="gap-2 bg-emerald-600 hover:bg-emerald-700 text-white"
+            >
+              {finishing ? <Loader2 className="h-4 w-4 animate-spin" /> : <CheckCircle2 className="h-4 w-4" />}
+              {isDone ? "تم الفحص" : "تم الفحص"}
+            </Button>
           </div>
         </div>
 
+        {patient.attachments && patient.attachments.length > 0 && (
+          <Card className="mb-4 p-4 no-print">
+            <div className="mb-2 flex items-center gap-2 text-sm font-semibold">
+              <Paperclip className="h-4 w-4" />المرفقات ({patient.attachments.length})
+            </div>
+            <div className="flex flex-wrap gap-2">
+              {patient.attachments.map((url, i) => (
+                <a key={i} href={url} target="_blank" rel="noreferrer">
+                  <img src={url} alt={`attachment-${i}`} className="h-24 w-24 rounded border object-cover transition-transform hover:scale-105" />
+                </a>
+              ))}
+            </div>
+          </Card>
+        )}
+
         <Card className="print-area overflow-hidden shadow-elegant relative" style={{ background: t.bg, color: t.text }}>
-          {/* Watermark logo (subtle, behind content) */}
           {settings?.logo_url && (
             <img
               src={settings.logo_url}
@@ -131,7 +168,6 @@ function PrescriptionPage() {
             />
           )}
 
-          {/* HEADER — logo right, doctor name + specialty center, date left */}
           <div
             className="relative p-5"
             style={{ background: `linear-gradient(135deg, ${t.header}, ${t.accent})`, color: "#ffffff" }}
@@ -163,7 +199,6 @@ function PrescriptionPage() {
             </div>
           </div>
 
-          {/* PATIENT INFO */}
           <div
             className="grid grid-cols-2 gap-3 border-b p-4 md:grid-cols-4"
             style={{ background: `${t.accent}10`, borderColor: `${t.accent}30` }}
@@ -174,7 +209,6 @@ function PrescriptionPage() {
             <Info label="الهاتف" value={patient.phone ?? "—"} ltr />
           </div>
 
-          {/* PRESCRIPTION BODY — large writing area */}
           <div className="p-6">
             <h3 className="mb-2 text-lg font-bold" style={{ color: t.accent }}>℞ الوصفة الطبية</h3>
 
@@ -193,6 +227,7 @@ function PrescriptionPage() {
                 dir="ltr"
                 value={body}
                 onChange={(e) => setBody(e.target.value)}
+                onBlur={() => { void savePrescription(); }}
                 placeholder="Write medications, dosage, instructions..."
                 className="min-h-[480px] resize-none rounded-none border-0 font-mono leading-relaxed focus-visible:ring-0"
                 style={{ background: t.bg, color: t.text, textAlign: "left", fontSize: `${settings?.font_size || 16}px` }}
@@ -200,7 +235,6 @@ function PrescriptionPage() {
             </div>
           </div>
 
-          {/* CLINIC FOOTER — phone, address, QR */}
           <div
             className="relative border-t p-4"
             style={{ background: `${t.accent}08`, borderColor: `${t.accent}30` }}
@@ -233,7 +267,7 @@ function PrescriptionPage() {
                 </div>
               ) : (
                 <div className="flex h-[100px] w-[100px] items-center justify-center rounded-md border-2 border-dashed text-[9px] text-muted-foreground no-print" style={{ borderColor: `${t.accent}30` }}>
-                  احفظ الوصفة<br />ليظهر QR
+                  سيظهر QR<br />بعد الحفظ
                 </div>
               )}
             </div>
