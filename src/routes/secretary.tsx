@@ -350,15 +350,13 @@ function SecretaryPage() {
             <TabsTrigger value="tomorrow"><Bell className="ml-1 h-4 w-4" />غداً ({tomorrowList.length})</TabsTrigger>
             <TabsTrigger value="dayafter"><CalendarClock className="ml-1 h-4 w-4" />بعد غد ({dayAfterList.length})</TabsTrigger>
             <TabsTrigger value="week"><CalendarDays className="ml-1 h-4 w-4" />هذا الأسبوع ({weekList.length})</TabsTrigger>
-            <TabsTrigger value="upcoming"><Clock className="ml-1 h-4 w-4" />القادمة ({upcomingList.length})</TabsTrigger>
             <TabsTrigger value="history"><Archive className="ml-1 h-4 w-4" />السجل</TabsTrigger>
           </TabsList>
 
-          <TabsContent value="today"><CardsList list={todayList} onEdit={setEditing} onDelete={deletePatient} onReschedule={reschedule} onSend={sendToDoctor} empty="لا توجد مواعيد اليوم." /></TabsContent>
-          <TabsContent value="tomorrow"><CardsList list={tomorrowList} onEdit={setEditing} onDelete={deletePatient} onReschedule={reschedule} onSend={sendToDoctor} empty="لا توجد مواعيد غداً." /></TabsContent>
-          <TabsContent value="dayafter"><CardsList list={dayAfterList} onEdit={setEditing} onDelete={deletePatient} onReschedule={reschedule} onSend={sendToDoctor} empty="لا توجد مواعيد بعد غد." /></TabsContent>
-          <TabsContent value="week"><CardsList list={weekList} onEdit={setEditing} onDelete={deletePatient} onReschedule={reschedule} onSend={sendToDoctor} empty="لا توجد مواعيد هذا الأسبوع." showDate /></TabsContent>
-          <TabsContent value="upcoming"><CardsList list={upcomingList} onEdit={setEditing} onDelete={deletePatient} onReschedule={reschedule} onSend={sendToDoctor} empty="لا توجد مواعيد قادمة." showDate /></TabsContent>
+          <TabsContent value="today"><PatientsTable list={todayList} onEdit={setEditing} onDelete={deletePatient} onReschedule={reschedule} onSend={sendToDoctor} empty="لا توجد مواعيد اليوم." /></TabsContent>
+          <TabsContent value="tomorrow"><PatientsTable list={tomorrowList} onEdit={setEditing} onDelete={deletePatient} onReschedule={reschedule} onSend={sendToDoctor} empty="لا توجد مواعيد غداً." /></TabsContent>
+          <TabsContent value="dayafter"><PatientsTable list={dayAfterList} onEdit={setEditing} onDelete={deletePatient} onReschedule={reschedule} onSend={sendToDoctor} empty="لا توجد مواعيد بعد غد." /></TabsContent>
+          <TabsContent value="week"><PatientsTable list={weekList} onEdit={setEditing} onDelete={deletePatient} onReschedule={reschedule} onSend={sendToDoctor} empty="لا توجد مواعيد هذا الأسبوع." showDate /></TabsContent>
           <TabsContent value="history"><HistoryTable list={[...archiveList, ...todayList, ...upcomingList].sort((a, b) => (getDate(b)).localeCompare(getDate(a)))} onEdit={setEditing} onDelete={deletePatient} /></TabsContent>
         </Tabs>
 
