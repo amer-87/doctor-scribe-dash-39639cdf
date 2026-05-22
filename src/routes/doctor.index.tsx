@@ -178,17 +178,8 @@ function DoctorDashboard() {
           <TabsContent value="tomorrow">
             <AppointmentList patients={tomorrowPatients} emptyText="لا توجد مواعيد غداً." onEdit={setEditing} onDelete={deletePatient} />
           </TabsContent>
-          <TabsContent value="week">
-            <AppointmentList patients={weekPatients} emptyText="لا توجد مواعيد هذا الأسبوع." onEdit={setEditing} onDelete={deletePatient} showDate />
-          </TabsContent>
-          <TabsContent value="upcoming">
-            <AppointmentList patients={upcomingPatients} emptyText="لا توجد مواعيد قادمة." onEdit={setEditing} onDelete={deletePatient} showDate />
-          </TabsContent>
           <TabsContent value="calendar">
             <CalendarView patients={patients} onEdit={setEditing} onDelete={deletePatient} />
-          </TabsContent>
-          <TabsContent value="records">
-            <RecordsTable patients={patients} onEdit={setEditing} onDelete={deletePatient} />
           </TabsContent>
         </Tabs>
 
