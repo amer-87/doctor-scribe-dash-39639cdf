@@ -63,10 +63,10 @@ function DoctorDashboard() {
         map.set(p.patient_id, { last: cur.last, count: cur.count + 1 });
       }
     });
-    setPatients(((pData as Patient[]) ?? []).map((p) => ({
+    setPatients(((pData as any[]) ?? []).map((p) => ({
       ...p,
       last_visit: map.get(p.id)?.last ?? p.created_at,
-      visit_count: map.get(p.id)?.count ?? 0,
+      visit_count: (p.visit_count ?? 1),
     })));
     const { data: secs } = await supabase.from("profiles").select("id,full_name,email,status").eq("doctor_id", user.id);
     setSecretaries((secs as Secretary[]) ?? []);
