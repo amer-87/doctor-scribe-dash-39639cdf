@@ -524,7 +524,7 @@ function PatientEditDialog({ patient, onClose }: { patient: Patient | null; onCl
               </Select>
             </div>
           </div>
-          <div><Label>الهاتف</Label><Input value={form.phone ?? ""} onChange={(e) => setForm({ ...form, phone: e.target.value })} dir="ltr" /></div>
+          <div><Label>الهاتف</Label><Input inputMode="numeric" pattern="[0-9]*" value={form.phone ?? ""} onChange={(e) => setForm({ ...form, phone: e.target.value.replace(/\D/g, "") })} dir="ltr" /></div>
           <div><Label>الأمراض المزمنة</Label><Textarea value={form.chronic_diseases ?? ""} onChange={(e) => setForm({ ...form, chronic_diseases: e.target.value })} /></div>
           <div><Label>الملاحظات</Label><Textarea value={form.notes ?? ""} onChange={(e) => setForm({ ...form, notes: e.target.value })} /></div>
         </div>
