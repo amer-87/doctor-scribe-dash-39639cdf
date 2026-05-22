@@ -143,6 +143,7 @@ export type Database = {
           sent_at: string | null
           status: string
           updated_at: string
+          visit_count: number
         }
         Insert: {
           added_by?: string | null
@@ -161,6 +162,7 @@ export type Database = {
           sent_at?: string | null
           status?: string
           updated_at?: string
+          visit_count?: number
         }
         Update: {
           added_by?: string | null
@@ -179,6 +181,7 @@ export type Database = {
           sent_at?: string | null
           status?: string
           updated_at?: string
+          visit_count?: number
         }
         Relationships: []
       }

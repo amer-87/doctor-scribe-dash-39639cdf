@@ -98,24 +98,60 @@ function SecretaryPage() {
     e.preventDefault();
     if (!doctorId || !user) { toast.error("لا يوجد طبيب مرتبط"); return; }
     setSubmitting(true);
-    const { error } = await supabase.from("patients").insert({
-      doctor_id: doctorId, added_by: user.id,
-      full_name: form.full_name,
-      age: form.age ? +form.age : null,
-      gender: form.gender || null,
-      phone: form.phone || null,
-      chronic_diseases: form.chronic_diseases || null,
-      notes: form.notes || null,
-      appointment_date: form.appointment_date || todayStr,
-      appointment_time: form.appointment_time || null,
-      status: "pending",
-      attachments,
-      sent_at: sendNow ? new Date().toISOString() : null,
-    });
+
+    // Check for existing patient (same doctor + same phone OR same name)
+    const phoneNorm = (form.phone || "").replace(/\D/g, "");
+    let existing: Patient | null = null;
+    if (phoneNorm) {
+      const { data } = await supabase.from("patients").select("*")
+        .eq("doctor_id", doctorId).eq("phone", phoneNorm).limit(1).maybeSingle();
+      existing = (data as Patient | null) ?? null;
+    }
+    if (!existing && form.full_name.trim()) {
+      const { data } = await supabase.from("patients").select("*")
+        .eq("doctor_id", doctorId).eq("full_name", form.full_name.trim()).limit(1).maybeSingle();
+      existing = (data as Patient | null) ?? null;
+    }
+
+    let error: any = null;
+    if (existing) {
+      const nextCount = ((existing as any).visit_count ?? 1) + 1;
+      const { error: upErr } = await supabase.from("patients").update({
+        visit_count: nextCount,
+        appointment_date: form.appointment_date || todayStr,
+        appointment_time: form.appointment_time || null,
+        status: "pending",
+        sent_at: sendNow ? new Date().toISOString() : null,
+        age: form.age ? +form.age : existing.age,
+        gender: form.gender || existing.gender,
+        chronic_diseases: form.chronic_diseases || existing.chronic_diseases,
+        notes: form.notes || existing.notes,
+        attachments: attachments.length ? attachments : (existing.attachments ?? []),
+      } as any).eq("id", existing.id);
+      error = upErr;
+      if (!upErr) toast.success(`زيارة جديدة لـ ${existing.full_name} (رقم ${nextCount})`);
+    } else {
+      const { error: insErr } = await supabase.from("patients").insert({
+        doctor_id: doctorId, added_by: user.id,
+        full_name: form.full_name.trim(),
+        age: form.age ? +form.age : null,
+        gender: form.gender || null,
+        phone: phoneNorm || null,
+        chronic_diseases: form.chronic_diseases || null,
+        notes: form.notes || null,
+        appointment_date: form.appointment_date || todayStr,
+        appointment_time: form.appointment_time || null,
+        status: "pending",
+        attachments,
+        sent_at: sendNow ? new Date().toISOString() : null,
+      });
+      error = insErr;
+      if (!insErr) toast.success(sendNow ? "تم الإرسال للطبيب فوراً" : "تم حفظ الموعد");
+    }
+
     setSubmitting(false);
     if (error) toast.error(error.message);
     else {
-      toast.success(sendNow ? "تم الإرسال للطبيب فوراً" : "تم حفظ الموعد");
       setForm(emptyForm);
       setAttachments([]);
       setShowForm(false);
@@ -249,7 +285,14 @@ function SecretaryPage() {
                 </div>
                 <div>
                   <Label>رقم الهاتف</Label>
-                  <Input value={form.phone} onChange={(e) => setForm({ ...form, phone: e.target.value })} dir="ltr" />
+                  <Input
+                    inputMode="numeric"
+                    pattern="[0-9]*"
+                    value={form.phone}
+                    onChange={(e) => setForm({ ...form, phone: e.target.value.replace(/\D/g, "") })}
+                    dir="ltr"
+                    placeholder="07XXXXXXXXX"
+                  />
                 </div>
                 <div className="md:col-span-2">
                   <Label>الأمراض المزمنة</Label>
@@ -538,7 +581,7 @@ function PatientEditDialog({ patient, onClose }: { patient: Patient | null; onCl
               </Select>
             </div>
           </div>
-          <div><Label>الهاتف</Label><Input value={form.phone ?? ""} onChange={(e) => setForm({ ...form, phone: e.target.value })} dir="ltr" /></div>
+          <div><Label>الهاتف</Label><Input inputMode="numeric" pattern="[0-9]*" value={form.phone ?? ""} onChange={(e) => setForm({ ...form, phone: e.target.value.replace(/\D/g, "") })} dir="ltr" /></div>
           <div><Label>الأمراض المزمنة</Label><Textarea value={form.chronic_diseases ?? ""} onChange={(e) => setForm({ ...form, chronic_diseases: e.target.value })} /></div>
           <div><Label>الملاحظات</Label><Textarea value={form.notes ?? ""} onChange={(e) => setForm({ ...form, notes: e.target.value })} /></div>
         </div>

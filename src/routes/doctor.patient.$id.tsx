@@ -18,7 +18,7 @@ export const Route = createFileRoute("/doctor/patient/$id")({
 
 interface Patient {
   id: string; full_name: string; age: number | null; gender: string | null; phone: string | null;
-  status: string | null; attachments: string[] | null;
+  status: string | null; attachments: string[] | null; visit_count?: number | null;
 }
 interface Settings {
   doctor_name: string; specialty: string; clinic_name: string;
@@ -203,7 +203,14 @@ function PrescriptionPage() {
             className="grid grid-cols-2 gap-3 border-b p-4 md:grid-cols-4"
             style={{ background: `${t.accent}10`, borderColor: `${t.accent}30` }}
           >
-            <Info label="المراجع" value={patient.full_name} />
+            <Info label="المراجع" value={
+              <span className="inline-flex items-center gap-2">
+                {patient.full_name}
+                <span className="inline-flex items-center rounded-md border border-primary/40 bg-primary/10 px-2 py-0.5 text-xs font-semibold text-primary">
+                  {(patient.visit_count ?? 1) <= 1 ? "الزيارة الأولى" : `الزيارة رقم ${patient.visit_count}`}
+                </span>
+              </span>
+            } />
             <Info label="العمر" value={patient.age ?? "—"} />
             <Info label="الجنس" value={patient.gender ?? "—"} />
             <Info label="الهاتف" value={patient.phone ?? "—"} ltr />
