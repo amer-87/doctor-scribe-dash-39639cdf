@@ -131,6 +131,7 @@ export type Database = {
           age: number | null
           appointment_date: string
           appointment_time: string | null
+          attachments: string[]
           chronic_diseases: string | null
           created_at: string
           doctor_id: string
@@ -139,6 +140,7 @@ export type Database = {
           id: string
           notes: string | null
           phone: string | null
+          sent_at: string | null
           status: string
           updated_at: string
         }
@@ -147,6 +149,7 @@ export type Database = {
           age?: number | null
           appointment_date?: string
           appointment_time?: string | null
+          attachments?: string[]
           chronic_diseases?: string | null
           created_at?: string
           doctor_id: string
@@ -155,6 +158,7 @@ export type Database = {
           id?: string
           notes?: string | null
           phone?: string | null
+          sent_at?: string | null
           status?: string
           updated_at?: string
         }
@@ -163,6 +167,7 @@ export type Database = {
           age?: number | null
           appointment_date?: string
           appointment_time?: string | null
+          attachments?: string[]
           chronic_diseases?: string | null
           created_at?: string
           doctor_id?: string
@@ -171,6 +176,7 @@ export type Database = {
           id?: string
           notes?: string | null
           phone?: string | null
+          sent_at?: string | null
           status?: string
           updated_at?: string
         }
