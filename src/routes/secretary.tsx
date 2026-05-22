@@ -385,7 +385,7 @@ function StatusBadge({ status }: { status: string | null }) {
   return <span className={`inline-flex items-center rounded-md border px-2.5 py-0.5 text-xs font-semibold ${s.cls}`}>{s.label}</span>;
 }
 
-function CardsList({
+function PatientsTable({
   list, onEdit, onDelete, onReschedule, onSend, empty, showDate,
 }: {
   list: Patient[]; onEdit: (p: Patient) => void; onDelete: (id: string) => void;
@@ -402,71 +402,97 @@ function CardsList({
   });
   const fmtDate = (s: string | null) => s ? new Date(s).toLocaleDateString("ar-EG", { weekday: "short", day: "numeric", month: "short" }) : "—";
   return (
-    <div>
-      <div className="mb-4 flex flex-wrap items-center gap-2">
-        <div className="flex flex-1 min-w-[200px] items-center gap-2">
-          <Search className="h-4 w-4 text-muted-foreground" />
-          <Input placeholder="بحث بالاسم أو الهاتف..." value={search} onChange={(e) => setSearch(e.target.value)} />
+    <Card>
+      <CardContent className="space-y-4 p-4">
+        <div className="flex flex-wrap items-center gap-2">
+          <div className="flex flex-1 min-w-[200px] items-center gap-2">
+            <Search className="h-4 w-4 text-muted-foreground" />
+            <Input placeholder="بحث بالاسم أو الهاتف..." value={search} onChange={(e) => setSearch(e.target.value)} />
+          </div>
+          <Select value={statusFilter} onValueChange={setStatusFilter}>
+            <SelectTrigger className="w-[160px]"><SelectValue /></SelectTrigger>
+            <SelectContent>
+              <SelectItem value="all">كل الحالات</SelectItem>
+              <SelectItem value="pending">بانتظار</SelectItem>
+              <SelectItem value="done">تم الفحص</SelectItem>
+              <SelectItem value="cancelled">ملغي</SelectItem>
+              <SelectItem value="postponed">مؤجل</SelectItem>
+            </SelectContent>
+          </Select>
         </div>
-        <Select value={statusFilter} onValueChange={setStatusFilter}>
-          <SelectTrigger className="w-[160px]"><SelectValue /></SelectTrigger>
-          <SelectContent>
-            <SelectItem value="all">كل الحالات</SelectItem>
-            <SelectItem value="pending">بانتظار</SelectItem>
-            <SelectItem value="done">تم الفحص</SelectItem>
-            <SelectItem value="cancelled">ملغي</SelectItem>
-            <SelectItem value="postponed">مؤجل</SelectItem>
-          </SelectContent>
-        </Select>
-      </div>
-      <div className="grid gap-3 md:grid-cols-2 lg:grid-cols-3">
-        {filtered.map((p) => {
-          const isDone = (p.status ?? "pending") === "done";
-          const isSent = !!p.sent_at;
-          return (
-            <Card key={p.id} className={cn("group transition-all hover:shadow-elegant", isDone && "opacity-70", isSent && !isDone && "border-primary/60")}>
-              <CardHeader className="pb-3">
-                <div className="flex items-start justify-between gap-2">
-                  <CardTitle className="truncate text-lg">{p.full_name}</CardTitle>
-                  <StatusBadge status={p.status} />
-                </div>
-                <div className="flex flex-wrap items-center gap-2 text-xs text-muted-foreground">
-                  {showDate && <span className="flex items-center gap-1"><CalendarDays className="h-3 w-3" />{fmtDate(p.appointment_date)}</span>}
-                  {p.appointment_time && <span className="flex items-center gap-1" dir="ltr"><Clock className="h-3 w-3" />{p.appointment_time.slice(0,5)}</span>}
-                  {p.attachments && p.attachments.length > 0 && <span className="flex items-center gap-1"><Paperclip className="h-3 w-3" />{p.attachments.length}</span>}
-                  {isSent && !isDone && <span className="flex items-center gap-1 text-primary"><Check className="h-3 w-3" />مرسل للطبيب</span>}
-                </div>
-              </CardHeader>
-              <CardContent className="space-y-2 text-sm">
-                <div className="flex flex-wrap gap-2">
-                  {p.age != null && <Badge variant="secondary">العمر: {p.age}</Badge>}
-                  {p.gender && <Badge variant="secondary">{p.gender}</Badge>}
-                </div>
-                {p.phone && <div className="flex items-center gap-1 text-muted-foreground"><Phone className="h-3 w-3" /><span dir="ltr">{p.phone}</span></div>}
-                {p.chronic_diseases && <div className="line-clamp-2 text-muted-foreground"><span className="font-medium">الأمراض:</span> {p.chronic_diseases}</div>}
-                <div className="flex items-center gap-2 pt-2">
-                  {!isDone && (
-                    <Button size="sm" className="flex-1 gap-1" disabled={isSent} onClick={() => onSend(p.id)}>
-                      <Send className="h-3 w-3" />{isSent ? "تم الإرسال" : "إرسال للطبيب"}
-                    </Button>
-                  )}
-                  <Button size="icon" variant="ghost" onClick={() => onEdit(p)} title="تعديل"><Pencil className="h-4 w-4" /></Button>
-                  <Button size="icon" variant="ghost" onClick={() => onDelete(p.id)} title="حذف"><Trash2 className="h-4 w-4 text-destructive" /></Button>
-                </div>
-                <div className="flex flex-wrap gap-1 pt-1">
-                  <Button size="sm" variant="outline" className="h-7 text-xs" onClick={() => onReschedule(p.id, 1)}>+1 يوم</Button>
-                  <Button size="sm" variant="outline" className="h-7 text-xs" onClick={() => onReschedule(p.id, 2)}>+2 يوم</Button>
-                  <Button size="sm" variant="outline" className="h-7 text-xs" onClick={() => onReschedule(p.id, 7)}>+أسبوع</Button>
-                </div>
-              </CardContent>
-            </Card>
-          );
-        })}
-        {filtered.length === 0 && (
-          <div className="col-span-full py-12 text-center text-muted-foreground">{empty}</div>
-        )}
-      </div>
-    </div>
+        <div className="overflow-x-auto">
+          <Table>
+            <TableHeader>
+              <TableRow>
+                <TableHead>الاسم</TableHead>
+                <TableHead>العمر</TableHead>
+                <TableHead>الجنس</TableHead>
+                <TableHead>الهاتف</TableHead>
+                <TableHead>الأمراض المزمنة</TableHead>
+                {showDate && <TableHead>التاريخ</TableHead>}
+                <TableHead>الوقت</TableHead>
+                <TableHead>المرفقات</TableHead>
+                <TableHead>الإرسال</TableHead>
+                <TableHead>الحالة</TableHead>
+                <TableHead className="text-center">الإجراءات</TableHead>
+              </TableRow>
+            </TableHeader>
+            <TableBody>
+              {filtered.map((p) => {
+                const isDone = (p.status ?? "pending") === "done";
+                const isSent = !!p.sent_at;
+                return (
+                  <TableRow
+                    key={p.id}
+                    className={cn(
+                      isDone && "opacity-60",
+                      isSent && !isDone && "bg-emerald-50 dark:bg-emerald-950/30",
+                      !isSent && !isDone && "bg-amber-50/50 dark:bg-amber-950/20",
+                    )}
+                  >
+                    <TableCell className="font-medium whitespace-nowrap">{p.full_name}</TableCell>
+                    <TableCell className="text-xs">{p.age ?? "—"}</TableCell>
+                    <TableCell className="text-xs">{p.gender ?? "—"}</TableCell>
+                    <TableCell className="text-xs whitespace-nowrap" dir="ltr">{p.phone ?? "—"}</TableCell>
+                    <TableCell className="text-xs max-w-[180px] truncate">{p.chronic_diseases ?? "—"}</TableCell>
+                    {showDate && <TableCell className="text-xs whitespace-nowrap">{fmtDate(p.appointment_date)}</TableCell>}
+                    <TableCell className="text-xs whitespace-nowrap" dir="ltr">{p.appointment_time?.slice(0,5) ?? "—"}</TableCell>
+                    <TableCell className="text-xs">
+                      {p.attachments && p.attachments.length > 0 ? (
+                        <span className="inline-flex items-center gap-1"><Paperclip className="h-3 w-3" />{p.attachments.length}</span>
+                      ) : "—"}
+                    </TableCell>
+                    <TableCell>
+                      {isSent ? (
+                        <span className="inline-flex items-center gap-1 text-xs font-medium text-emerald-700 dark:text-emerald-300"><Check className="h-3 w-3" />مرسل</span>
+                      ) : (
+                        <span className="text-xs text-muted-foreground">غير مرسل</span>
+                      )}
+                    </TableCell>
+                    <TableCell><StatusBadge status={p.status} /></TableCell>
+                    <TableCell>
+                      <div className="flex justify-center gap-1">
+                        {!isDone && !isSent && (
+                          <Button size="sm" className="h-7 gap-1 text-xs" onClick={() => onSend(p.id)}>
+                            <Send className="h-3 w-3" />إرسال
+                          </Button>
+                        )}
+                        <Button size="icon" variant="ghost" className="h-7 w-7" onClick={() => onReschedule(p.id, 1)} title="+1 يوم"><CalendarClock className="h-4 w-4" /></Button>
+                        <Button size="icon" variant="ghost" className="h-7 w-7" onClick={() => onEdit(p)} title="تعديل"><Pencil className="h-4 w-4" /></Button>
+                        <Button size="icon" variant="ghost" className="h-7 w-7" onClick={() => onDelete(p.id)} title="حذف"><Trash2 className="h-4 w-4 text-destructive" /></Button>
+                      </div>
+                    </TableCell>
+                  </TableRow>
+                );
+              })}
+              {filtered.length === 0 && (
+                <TableRow><TableCell colSpan={showDate ? 11 : 10} className="py-12 text-center text-muted-foreground">{empty}</TableCell></TableRow>
+              )}
+            </TableBody>
+          </Table>
+        </div>
+      </CardContent>
+    </Card>
   );
 }
 
