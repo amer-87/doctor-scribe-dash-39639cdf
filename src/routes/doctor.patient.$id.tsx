@@ -18,7 +18,7 @@ export const Route = createFileRoute("/doctor/patient/$id")({
 
 interface Patient {
   id: string; full_name: string; age: number | null; gender: string | null; phone: string | null;
-  status: string | null; attachments: string[] | null;
+  status: string | null; attachments: string[] | null; visit_count?: number | null;
 }
 interface Settings {
   doctor_name: string; specialty: string; clinic_name: string;
