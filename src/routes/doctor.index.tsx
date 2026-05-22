@@ -228,13 +228,21 @@ function AppointmentList({
 }) {
   const [search, setSearch] = useState("");
   const [statusFilter, setStatusFilter] = useState<string>("all");
+  const [sentFilter, setSentFilter] = useState<string>("all");
   const filtered = patients.filter((p) => {
     const q = search.trim().toLowerCase();
     if (q && !(p.full_name.toLowerCase().includes(q) || (p.phone ?? "").includes(q))) return false;
     if (statusFilter !== "all" && (p.status ?? "pending") !== statusFilter) return false;
+    if (sentFilter === "sent" && !p.sent_at) return false;
+    if (sentFilter === "unsent" && p.sent_at) return false;
     return true;
   });
   const fmtDate = (s: string | null) => s ? new Date(s).toLocaleDateString("ar-EG", { weekday: "short", day: "numeric", month: "short" }) : "—";
+  const visitLabel = (n: number) => {
+    if (!n || n <= 1) return "الزيارة الأولى";
+    const map: Record<number, string> = { 2: "الثانية", 3: "الثالثة", 4: "الرابعة", 5: "الخامسة", 6: "السادسة", 7: "السابعة", 8: "الثامنة", 9: "التاسعة", 10: "العاشرة" };
+    return `الزيارة ${map[n] ?? `رقم ${n}`}`;
+  };
   return (
     <div>
       <div className="mb-4 flex flex-wrap items-center gap-2">
@@ -242,8 +250,16 @@ function AppointmentList({
           <Search className="h-4 w-4 text-muted-foreground" />
           <Input placeholder="بحث بالاسم أو الهاتف..." value={search} onChange={(e) => setSearch(e.target.value)} />
         </div>
+        <Select value={sentFilter} onValueChange={setSentFilter}>
+          <SelectTrigger className="w-[150px]"><SelectValue /></SelectTrigger>
+          <SelectContent>
+            <SelectItem value="all">الكل</SelectItem>
+            <SelectItem value="sent">المرسلون فقط</SelectItem>
+            <SelectItem value="unsent">غير المرسلين</SelectItem>
+          </SelectContent>
+        </Select>
         <Select value={statusFilter} onValueChange={setStatusFilter}>
-          <SelectTrigger className="w-[160px]"><SelectValue /></SelectTrigger>
+          <SelectTrigger className="w-[150px]"><SelectValue /></SelectTrigger>
           <SelectContent>
             <SelectItem value="all">كل الحالات</SelectItem>
             <SelectItem value="pending">بانتظار</SelectItem>
@@ -253,47 +269,79 @@ function AppointmentList({
           </SelectContent>
         </Select>
       </div>
-      <div className="grid gap-3 md:grid-cols-2 lg:grid-cols-3">
-        {filtered.map((p) => {
-          const isDone = (p.status ?? "pending") === "done";
-          return (
-            <Card key={p.id} className={`group transition-all hover:shadow-elegant ${isDone ? "opacity-70" : ""}`}>
-              <CardHeader className="pb-3">
-                <div className="flex items-start justify-between gap-2">
-                  <Link to="/doctor/patient/$id" params={{ id: p.id }} className="flex-1 min-w-0">
-                    <CardTitle className="text-lg hover:text-primary transition-colors truncate">{p.full_name}</CardTitle>
-                  </Link>
-                  <StatusBadge status={p.status} />
-                </div>
-                <div className="flex flex-wrap items-center gap-2 text-xs text-muted-foreground">
-                  {showDate && <span className="flex items-center gap-1"><CalendarDays className="h-3 w-3" />{fmtDate(p.appointment_date)}</span>}
-                  {p.appointment_time && <span className="flex items-center gap-1" dir="ltr"><Clock className="h-3 w-3" />{p.appointment_time.slice(0,5)}</span>}
-                  {p.attachments && p.attachments.length > 0 && <span className="flex items-center gap-1"><Paperclip className="h-3 w-3" />{p.attachments.length}</span>}
-                </div>
-              </CardHeader>
-              <CardContent className="space-y-2 text-sm">
-                <div className="flex flex-wrap gap-2">
-                  {p.age != null && <Badge variant="secondary">العمر: {p.age}</Badge>}
-                  {p.gender && <Badge variant="secondary">{p.gender}</Badge>}
-                  {p.visit_count > 0 && <Badge>{p.visit_count} زيارة</Badge>}
-                </div>
-                {p.phone && <div className="flex items-center gap-1 text-muted-foreground"><Phone className="h-3 w-3" /><span dir="ltr">{p.phone}</span></div>}
-                {p.chronic_diseases && <div className="text-muted-foreground line-clamp-2"><span className="font-medium">الأمراض:</span> {p.chronic_diseases}</div>}
-                <div className="flex items-center gap-2 pt-2">
-                  <Link to="/doctor/patient/$id" params={{ id: p.id }} className="flex-1">
-                    <Button variant="default" size="sm" className="w-full"><FileText className="ml-1 h-4 w-4" />الوصفة الطبية</Button>
-                  </Link>
-                  <Button size="icon" variant="ghost" onClick={() => onEdit(p)} title="تعديل"><Pencil className="h-4 w-4" /></Button>
-                  <Button size="icon" variant="ghost" onClick={() => onDelete(p.id)} title="حذف"><Trash2 className="h-4 w-4 text-destructive" /></Button>
-                </div>
-              </CardContent>
-            </Card>
-          );
-        })}
-        {filtered.length === 0 && (
-          <div className="col-span-full py-12 text-center text-muted-foreground">{emptyText}</div>
-        )}
-      </div>
+      <Card>
+        <CardContent className="p-0">
+          <div className="overflow-x-auto">
+            <Table>
+              <TableHeader>
+                <TableRow>
+                  <TableHead className="whitespace-nowrap">الاسم</TableHead>
+                  <TableHead className="whitespace-nowrap">العمر</TableHead>
+                  <TableHead className="whitespace-nowrap">الجنس</TableHead>
+                  <TableHead className="whitespace-nowrap">الهاتف</TableHead>
+                  <TableHead className="whitespace-nowrap">الأمراض المزمنة</TableHead>
+                  {showDate && <TableHead className="whitespace-nowrap">تاريخ المراجعة</TableHead>}
+                  <TableHead className="whitespace-nowrap">عدد الزيارات</TableHead>
+                  <TableHead className="whitespace-nowrap">حالة الإرسال</TableHead>
+                  <TableHead className="whitespace-nowrap">الحالة</TableHead>
+                  <TableHead className="text-center whitespace-nowrap">الإجراءات</TableHead>
+                </TableRow>
+              </TableHeader>
+              <TableBody>
+                {filtered.map((p) => {
+                  const isDone = (p.status ?? "pending") === "done";
+                  const isSent = !!p.sent_at;
+                  const rowCls = isDone
+                    ? "opacity-60"
+                    : isSent
+                      ? "bg-emerald-50 hover:bg-emerald-100/70 dark:bg-emerald-950/30 dark:hover:bg-emerald-950/50"
+                      : "bg-amber-50/40 hover:bg-amber-100/40 dark:bg-amber-950/10";
+                  return (
+                    <TableRow key={p.id} className={rowCls}>
+                      <TableCell className="font-medium whitespace-nowrap">
+                        <Link to="/doctor/patient/$id" params={{ id: p.id }} className="hover:text-primary">{p.full_name}</Link>
+                        {p.attachments && p.attachments.length > 0 && (
+                          <Paperclip className="inline mr-1 h-3 w-3 text-muted-foreground" />
+                        )}
+                      </TableCell>
+                      <TableCell className="text-xs">{p.age ?? "—"}</TableCell>
+                      <TableCell className="text-xs">{p.gender ?? "—"}</TableCell>
+                      <TableCell className="text-xs whitespace-nowrap" dir="ltr">{p.phone ?? "—"}</TableCell>
+                      <TableCell className="text-xs max-w-[180px] truncate" title={p.chronic_diseases ?? ""}>{p.chronic_diseases ?? "—"}</TableCell>
+                      {showDate && <TableCell className="text-xs whitespace-nowrap">{fmtDate(p.appointment_date)}{p.appointment_time && <span className="block text-muted-foreground" dir="ltr">{p.appointment_time.slice(0,5)}</span>}</TableCell>}
+                      <TableCell><Badge variant="secondary" className="whitespace-nowrap">{visitLabel(p.visit_count)}</Badge></TableCell>
+                      <TableCell>
+                        {isSent ? (
+                          <span className="inline-flex items-center gap-1 rounded-md border border-emerald-300 bg-emerald-100 px-2 py-0.5 text-xs font-semibold text-emerald-800 dark:bg-emerald-900/40 dark:text-emerald-200">
+                            ✅ مرسل
+                          </span>
+                        ) : (
+                          <span className="inline-flex items-center gap-1 rounded-md border border-muted bg-muted/50 px-2 py-0.5 text-xs text-muted-foreground">غير مرسل</span>
+                        )}
+                      </TableCell>
+                      <TableCell><StatusBadge status={p.status} /></TableCell>
+                      <TableCell>
+                        <div className="flex justify-center gap-1">
+                          <Link to="/doctor/patient/$id" params={{ id: p.id }}>
+                            <Button size="sm" variant={isSent && !isDone ? "default" : "outline"} className="gap-1 whitespace-nowrap">
+                              <FileText className="h-3 w-3" />الوصفة
+                            </Button>
+                          </Link>
+                          <Button size="icon" variant="ghost" onClick={() => onEdit(p)} title="تعديل"><Pencil className="h-4 w-4" /></Button>
+                          <Button size="icon" variant="ghost" onClick={() => onDelete(p.id)} title="حذف"><Trash2 className="h-4 w-4 text-destructive" /></Button>
+                        </div>
+                      </TableCell>
+                    </TableRow>
+                  );
+                })}
+                {filtered.length === 0 && (
+                  <TableRow><TableCell colSpan={showDate ? 10 : 9} className="py-12 text-center text-muted-foreground">{emptyText}</TableCell></TableRow>
+                )}
+              </TableBody>
+            </Table>
+          </div>
+        </CardContent>
+      </Card>
     </div>
   );
 }
