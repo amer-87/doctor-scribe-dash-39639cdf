@@ -169,10 +169,7 @@ function DoctorDashboard() {
           <TabsList className="mb-4 flex w-full flex-wrap h-auto">
             <TabsTrigger value="today"><Activity className="ml-1 h-4 w-4" />اليوم</TabsTrigger>
             <TabsTrigger value="tomorrow"><Bell className="ml-1 h-4 w-4" />غداً</TabsTrigger>
-            <TabsTrigger value="week"><CalendarDays className="ml-1 h-4 w-4" />هذا الأسبوع</TabsTrigger>
-            <TabsTrigger value="upcoming"><Clock className="ml-1 h-4 w-4" />القادمة</TabsTrigger>
             <TabsTrigger value="calendar"><CalendarDays className="ml-1 h-4 w-4" />التقويم</TabsTrigger>
-            <TabsTrigger value="records"><FileText className="ml-1 h-4 w-4" />السجل</TabsTrigger>
           </TabsList>
 
           <TabsContent value="today">
