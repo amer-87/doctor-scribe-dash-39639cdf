@@ -169,10 +169,7 @@ function DoctorDashboard() {
           <TabsList className="mb-4 flex w-full flex-wrap h-auto">
             <TabsTrigger value="today"><Activity className="ml-1 h-4 w-4" />اليوم</TabsTrigger>
             <TabsTrigger value="tomorrow"><Bell className="ml-1 h-4 w-4" />غداً</TabsTrigger>
-            <TabsTrigger value="week"><CalendarDays className="ml-1 h-4 w-4" />هذا الأسبوع</TabsTrigger>
-            <TabsTrigger value="upcoming"><Clock className="ml-1 h-4 w-4" />القادمة</TabsTrigger>
             <TabsTrigger value="calendar"><CalendarDays className="ml-1 h-4 w-4" />التقويم</TabsTrigger>
-            <TabsTrigger value="records"><FileText className="ml-1 h-4 w-4" />السجل</TabsTrigger>
           </TabsList>
 
           <TabsContent value="today">
@@ -181,17 +178,8 @@ function DoctorDashboard() {
           <TabsContent value="tomorrow">
             <AppointmentList patients={tomorrowPatients} emptyText="لا توجد مواعيد غداً." onEdit={setEditing} onDelete={deletePatient} />
           </TabsContent>
-          <TabsContent value="week">
-            <AppointmentList patients={weekPatients} emptyText="لا توجد مواعيد هذا الأسبوع." onEdit={setEditing} onDelete={deletePatient} showDate />
-          </TabsContent>
-          <TabsContent value="upcoming">
-            <AppointmentList patients={upcomingPatients} emptyText="لا توجد مواعيد قادمة." onEdit={setEditing} onDelete={deletePatient} showDate />
-          </TabsContent>
           <TabsContent value="calendar">
             <CalendarView patients={patients} onEdit={setEditing} onDelete={deletePatient} />
-          </TabsContent>
-          <TabsContent value="records">
-            <RecordsTable patients={patients} onEdit={setEditing} onDelete={deletePatient} />
           </TabsContent>
         </Tabs>
 
