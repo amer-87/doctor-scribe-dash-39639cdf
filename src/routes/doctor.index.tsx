@@ -129,7 +129,7 @@ function DoctorDashboard() {
       <AppHeader />
       <main className="container mx-auto p-4 md:p-8">
         <div className="mb-6 grid gap-3 md:grid-cols-4">
-          <StatCard icon={<Activity className="h-5 w-5" />} label="مراجعو اليوم (مرسلين)" value={todayPatients.length} color="text-primary" />
+          <StatCard icon={<Activity className="h-5 w-5" />} label="مراجعو اليوم" value={todayPatients.length} color="text-primary" />
           <StatCard icon={<Bell className="h-5 w-5" />} label="مواعيد الغد" value={tomorrowPatients.length} color="text-warning" />
           <StatCard icon={<CalendarDays className="h-5 w-5" />} label="هذا الأسبوع" value={weekPatients.length} color="text-success" />
           <StatCard icon={<Users className="h-5 w-5" />} label="إجمالي المراجعين" value={patients.length} color="text-muted-foreground" />
