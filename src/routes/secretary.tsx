@@ -1,7 +1,7 @@
 import { createFileRoute } from "@tanstack/react-router";
 import { RequireAuth } from "@/components/RequireAuth";
 import { AppHeader } from "@/components/AppHeader";
-import { useEffect, useMemo, useState } from "react";
+import { useEffect, useMemo, useRef, useState } from "react";
 import { supabase } from "@/integrations/supabase/client";
 import { useAuth } from "@/hooks/use-auth";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
@@ -13,10 +13,8 @@ import { Badge } from "@/components/ui/badge";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
 import { Tabs, TabsList, TabsTrigger, TabsContent } from "@/components/ui/tabs";
 import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogFooter } from "@/components/ui/dialog";
-import {
-  Table, TableBody, TableCell, TableHead, TableHeader, TableRow,
-} from "@/components/ui/table";
-import { Calendar, Users, UserPlus, Loader2, Pencil, Trash2, Clock, Phone, Search, CalendarDays, Archive, Activity, Bell, CalendarClock } from "lucide-react";
+import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from "@/components/ui/table";
+import { Calendar, Users, UserPlus, Loader2, Pencil, Trash2, Clock, Phone, Search, CalendarDays, Archive, Activity, Bell, CalendarClock, Send, Camera, X, Paperclip, Check } from "lucide-react";
 import { toast } from "sonner";
 import { cn } from "@/lib/utils";
 
@@ -29,13 +27,14 @@ interface Patient {
   phone: string | null; chronic_diseases: string | null; notes: string | null;
   created_at: string; appointment_date: string | null;
   appointment_time: string | null; status: string | null;
+  sent_at: string | null; attachments: string[] | null;
 }
 
-const STATUS_LABELS: Record<string, { label: string; variant: "default" | "secondary" | "destructive" | "outline" }> = {
-  pending: { label: "بانتظار", variant: "secondary" },
-  done: { label: "تم الفحص", variant: "default" },
-  cancelled: { label: "ملغي", variant: "destructive" },
-  postponed: { label: "مؤجل", variant: "outline" },
+const STATUS_LABELS: Record<string, { label: string; cls: string }> = {
+  pending: { label: "بانتظار", cls: "bg-amber-100 text-amber-800 border-amber-300 dark:bg-amber-900/40 dark:text-amber-200" },
+  done: { label: "تم الفحص", cls: "bg-emerald-100 text-emerald-800 border-emerald-300 dark:bg-emerald-900/40 dark:text-emerald-200" },
+  cancelled: { label: "ملغي", cls: "bg-red-100 text-red-800 border-red-300 dark:bg-red-900/40 dark:text-red-200" },
+  postponed: { label: "مؤجل", cls: "bg-slate-100 text-slate-800 border-slate-300 dark:bg-slate-800 dark:text-slate-200" },
 };
 
 function isoOf(d: Date) { return d.toISOString().slice(0, 10); }
@@ -47,10 +46,17 @@ function SecretaryPage() {
   const [submitting, setSubmitting] = useState(false);
   const [patients, setPatients] = useState<Patient[]>([]);
   const [editing, setEditing] = useState<Patient | null>(null);
-  const [form, setForm] = useState({
+  const [showForm, setShowForm] = useState(false);
+  const [attachments, setAttachments] = useState<string[]>([]);
+  const [uploading, setUploading] = useState(false);
+  const cameraRef = useRef<HTMLInputElement>(null);
+  const fileRef = useRef<HTMLInputElement>(null);
+
+  const emptyForm = {
     full_name: "", age: "", gender: "", phone: "", chronic_diseases: "", notes: "",
     appointment_date: todayStr, appointment_time: "",
-  });
+  };
+  const [form, setForm] = useState(emptyForm);
 
   const doctorId = profile?.doctor_id;
 
@@ -72,7 +78,23 @@ function SecretaryPage() {
     return () => { supabase.removeChannel(ch); };
   }, [doctorId]);
 
-  const submit = async (e: React.FormEvent) => {
+  const handleUpload = async (files: FileList | null) => {
+    if (!files || files.length === 0 || !user) return;
+    setUploading(true);
+    const urls: string[] = [];
+    for (const f of Array.from(files)) {
+      const path = `${user.id}/${Date.now()}-${f.name}`;
+      const { error } = await supabase.storage.from("attachments").upload(path, f);
+      if (error) { toast.error(error.message); continue; }
+      const { data } = supabase.storage.from("attachments").getPublicUrl(path);
+      urls.push(data.publicUrl);
+    }
+    setAttachments((a) => [...a, ...urls]);
+    setUploading(false);
+    if (urls.length) toast.success(`تم رفع ${urls.length} مرفق`);
+  };
+
+  const submit = async (e: React.FormEvent, sendNow: boolean) => {
     e.preventDefault();
     if (!doctorId || !user) { toast.error("لا يوجد طبيب مرتبط"); return; }
     setSubmitting(true);
@@ -87,12 +109,16 @@ function SecretaryPage() {
       appointment_date: form.appointment_date || todayStr,
       appointment_time: form.appointment_time || null,
       status: "pending",
+      attachments,
+      sent_at: sendNow ? new Date().toISOString() : null,
     });
     setSubmitting(false);
     if (error) toast.error(error.message);
     else {
-      toast.success("تم حجز الموعد — يظهر فوراً عند الطبيب");
-      setForm({ full_name: "", age: "", gender: "", phone: "", chronic_diseases: "", notes: "", appointment_date: todayStr, appointment_time: "" });
+      toast.success(sendNow ? "تم الإرسال للطبيب فوراً" : "تم حفظ الموعد");
+      setForm(emptyForm);
+      setAttachments([]);
+      setShowForm(false);
     }
   };
 
@@ -110,9 +136,9 @@ function SecretaryPage() {
     if (error) toast.error(error.message); else toast.success(`تم تأجيل الموعد ${days} يوم`);
   };
 
-  const setStatus = async (id: string, status: string) => {
-    const { error } = await supabase.from("patients").update({ status }).eq("id", id);
-    if (error) toast.error(error.message); else toast.success("تم تحديث الحالة");
+  const sendToDoctor = async (id: string) => {
+    const { error } = await supabase.from("patients").update({ sent_at: new Date().toISOString(), status: "pending" }).eq("id", id);
+    if (error) toast.error(error.message); else toast.success("تم إرسال المراجع للطبيب");
   };
 
   const today = todayStr;
@@ -121,7 +147,16 @@ function SecretaryPage() {
   const weekEnd = addDaysISO(7);
 
   const getDate = (p: Patient) => p.appointment_date ?? p.created_at.slice(0, 10);
-  const todayList = patients.filter((p) => getDate(p) === today);
+  // Sort: pending+unsent first, then sent+pending, then done at bottom
+  const queueSort = (a: Patient, b: Patient) => {
+    const aDone = (a.status ?? "pending") === "done" ? 2 : 0;
+    const bDone = (b.status ?? "pending") === "done" ? 2 : 0;
+    if (aDone !== bDone) return aDone - bDone;
+    const at = a.appointment_time ?? "99:99";
+    const bt = b.appointment_time ?? "99:99";
+    return at.localeCompare(bt);
+  };
+  const todayList = patients.filter((p) => getDate(p) === today).sort(queueSort);
   const tomorrowList = patients.filter((p) => getDate(p) === tomorrow);
   const dayAfterList = patients.filter((p) => getDate(p) === dayAfter);
   const weekList = patients.filter((p) => { const d = getDate(p); return d >= today && d <= weekEnd; });
@@ -151,80 +186,120 @@ function SecretaryPage() {
           <StatCard icon={<Bell className="h-5 w-5 text-warning" />} label="مواعيد الغد" value={tomorrowList.length} big />
         </div>
 
-        <Card className="mb-6 shadow-elegant">
-          <CardHeader>
-            <CardTitle className="flex items-center gap-2"><UserPlus className="h-5 w-5 text-primary" />حجز موعد جديد</CardTitle>
-          </CardHeader>
-          <CardContent>
-            <form onSubmit={submit} className="grid gap-3 md:grid-cols-2">
-              <div className="md:col-span-2">
-                <Label>الاسم الكامل *</Label>
-                <Input required value={form.full_name} onChange={(e) => setForm({ ...form, full_name: e.target.value })} />
-              </div>
-              <div className="md:col-span-2">
-                <Label>تاريخ الموعد *</Label>
-                <Input type="date" required value={form.appointment_date} onChange={(e) => setForm({ ...form, appointment_date: e.target.value })} />
-                <div className="mt-2 flex flex-wrap gap-2">
-                  {quickDays.map((q) => {
-                    const target = addDaysISO(q.days);
-                    const active = form.appointment_date === target;
-                    return (
-                      <button
-                        type="button"
-                        key={q.label}
-                        onClick={() => setForm({ ...form, appointment_date: target })}
-                        className={cn(
-                          "rounded-full border px-4 py-1.5 text-sm font-medium transition-all duration-200",
-                          active
-                            ? "bg-primary text-primary-foreground border-primary shadow-md scale-105"
-                            : "bg-background hover:bg-accent hover:scale-105 border-border",
-                        )}
-                      >
-                        {q.label}
-                      </button>
-                    );
-                  })}
+        <div className="mb-6 flex justify-end">
+          <Button onClick={() => setShowForm((s) => !s)} className="gap-2">
+            <UserPlus className="h-4 w-4" />
+            {showForm ? "إخفاء النموذج" : "إضافة مراجع جديد"}
+          </Button>
+        </div>
+
+        {showForm && (
+          <Card className="mb-6 shadow-elegant animate-in fade-in slide-in-from-top-2 duration-300">
+            <CardHeader>
+              <CardTitle className="flex items-center gap-2"><UserPlus className="h-5 w-5 text-primary" />حجز موعد جديد</CardTitle>
+            </CardHeader>
+            <CardContent>
+              <form onSubmit={(e) => submit(e, false)} className="grid gap-3 md:grid-cols-2">
+                <div className="md:col-span-2">
+                  <Label>الاسم الكامل *</Label>
+                  <Input required value={form.full_name} onChange={(e) => setForm({ ...form, full_name: e.target.value })} />
                 </div>
-              </div>
-              <div>
-                <Label>وقت الموعد (اختياري)</Label>
-                <Input type="time" value={form.appointment_time} onChange={(e) => setForm({ ...form, appointment_time: e.target.value })} />
-              </div>
-              <div>
-                <Label>العمر</Label>
-                <Input type="number" value={form.age} onChange={(e) => setForm({ ...form, age: e.target.value })} />
-              </div>
-              <div>
-                <Label>الجنس</Label>
-                <Select value={form.gender} onValueChange={(v) => setForm({ ...form, gender: v })}>
-                  <SelectTrigger><SelectValue placeholder="اختر" /></SelectTrigger>
-                  <SelectContent>
-                    <SelectItem value="ذكر">ذكر</SelectItem>
-                    <SelectItem value="أنثى">أنثى</SelectItem>
-                  </SelectContent>
-                </Select>
-              </div>
-              <div>
-                <Label>رقم الهاتف</Label>
-                <Input value={form.phone} onChange={(e) => setForm({ ...form, phone: e.target.value })} dir="ltr" />
-              </div>
-              <div className="md:col-span-2">
-                <Label>الأمراض المزمنة</Label>
-                <Textarea rows={2} value={form.chronic_diseases} onChange={(e) => setForm({ ...form, chronic_diseases: e.target.value })} />
-              </div>
-              <div className="md:col-span-2">
-                <Label>الملاحظات</Label>
-                <Textarea rows={2} value={form.notes} onChange={(e) => setForm({ ...form, notes: e.target.value })} />
-              </div>
-              <div className="md:col-span-2">
-                <Button type="submit" disabled={submitting} className="w-full">
-                  {submitting && <Loader2 className="ml-2 h-4 w-4 animate-spin" />}
-                  حجز الموعد
-                </Button>
-              </div>
-            </form>
-          </CardContent>
-        </Card>
+                <div className="md:col-span-2">
+                  <Label>تاريخ الموعد *</Label>
+                  <Input type="date" required value={form.appointment_date} onChange={(e) => setForm({ ...form, appointment_date: e.target.value })} />
+                  <div className="mt-2 flex flex-wrap gap-2">
+                    {quickDays.map((q) => {
+                      const target = addDaysISO(q.days);
+                      const active = form.appointment_date === target;
+                      return (
+                        <button
+                          type="button"
+                          key={q.label}
+                          onClick={() => setForm({ ...form, appointment_date: target })}
+                          className={cn(
+                            "rounded-full border px-4 py-1.5 text-sm font-medium transition-all duration-200",
+                            active
+                              ? "bg-primary text-primary-foreground border-primary shadow-md scale-105"
+                              : "bg-background hover:bg-accent hover:scale-105 border-border",
+                          )}
+                        >
+                          {q.label}
+                        </button>
+                      );
+                    })}
+                  </div>
+                </div>
+                <div>
+                  <Label>وقت الموعد (اختياري)</Label>
+                  <Input type="time" value={form.appointment_time} onChange={(e) => setForm({ ...form, appointment_time: e.target.value })} />
+                </div>
+                <div>
+                  <Label>العمر</Label>
+                  <Input type="number" value={form.age} onChange={(e) => setForm({ ...form, age: e.target.value })} />
+                </div>
+                <div>
+                  <Label>الجنس</Label>
+                  <Select value={form.gender} onValueChange={(v) => setForm({ ...form, gender: v })}>
+                    <SelectTrigger><SelectValue placeholder="اختر" /></SelectTrigger>
+                    <SelectContent>
+                      <SelectItem value="ذكر">ذكر</SelectItem>
+                      <SelectItem value="أنثى">أنثى</SelectItem>
+                    </SelectContent>
+                  </Select>
+                </div>
+                <div>
+                  <Label>رقم الهاتف</Label>
+                  <Input value={form.phone} onChange={(e) => setForm({ ...form, phone: e.target.value })} dir="ltr" />
+                </div>
+                <div className="md:col-span-2">
+                  <Label>الأمراض المزمنة</Label>
+                  <Textarea rows={2} value={form.chronic_diseases} onChange={(e) => setForm({ ...form, chronic_diseases: e.target.value })} />
+                </div>
+                <div className="md:col-span-2">
+                  <Label>الملاحظات</Label>
+                  <Textarea rows={2} value={form.notes} onChange={(e) => setForm({ ...form, notes: e.target.value })} />
+                </div>
+
+                {/* Attachments */}
+                <div className="md:col-span-2">
+                  <Label className="flex items-center gap-1"><Paperclip className="h-4 w-4" />المرفقات (صور)</Label>
+                  <div className="mt-2 flex flex-wrap gap-2">
+                    <Button type="button" variant="outline" size="sm" onClick={() => cameraRef.current?.click()} disabled={uploading}>
+                      <Camera className="ml-1 h-4 w-4" />التقاط بالكاميرا
+                    </Button>
+                    <Button type="button" variant="outline" size="sm" onClick={() => fileRef.current?.click()} disabled={uploading}>
+                      <Paperclip className="ml-1 h-4 w-4" />اختيار صورة
+                    </Button>
+                    {uploading && <span className="flex items-center text-xs text-muted-foreground"><Loader2 className="ml-1 h-3 w-3 animate-spin" />جاري الرفع...</span>}
+                    <input ref={cameraRef} type="file" accept="image/*" capture="environment" className="hidden" onChange={(e) => handleUpload(e.target.files)} />
+                    <input ref={fileRef} type="file" accept="image/*" multiple className="hidden" onChange={(e) => handleUpload(e.target.files)} />
+                  </div>
+                  {attachments.length > 0 && (
+                    <div className="mt-3 flex flex-wrap gap-2">
+                      {attachments.map((url, i) => (
+                        <div key={i} className="relative">
+                          <img src={url} alt={`attachment-${i}`} className="h-20 w-20 rounded border object-cover" />
+                          <button type="button" onClick={() => setAttachments((a) => a.filter((_, j) => j !== i))} className="absolute -top-2 -left-2 rounded-full bg-destructive p-0.5 text-destructive-foreground"><X className="h-3 w-3" /></button>
+                        </div>
+                      ))}
+                    </div>
+                  )}
+                </div>
+
+                <div className="md:col-span-2 flex gap-2">
+                  <Button type="submit" variant="outline" disabled={submitting} className="flex-1">
+                    {submitting && <Loader2 className="ml-2 h-4 w-4 animate-spin" />}
+                    حفظ الموعد
+                  </Button>
+                  <Button type="button" onClick={(e) => submit(e as any, true)} disabled={submitting || !form.full_name} className="flex-1 gap-2">
+                    <Send className="h-4 w-4" />
+                    حفظ وإرسال للطبيب
+                  </Button>
+                </div>
+              </form>
+            </CardContent>
+          </Card>
+        )}
 
         <Tabs defaultValue="today" className="w-full">
           <TabsList className="mb-4 flex h-auto w-full flex-wrap">
@@ -236,11 +311,11 @@ function SecretaryPage() {
             <TabsTrigger value="history"><Archive className="ml-1 h-4 w-4" />السجل</TabsTrigger>
           </TabsList>
 
-          <TabsContent value="today"><CardsList list={todayList} onEdit={setEditing} onDelete={deletePatient} onReschedule={reschedule} onStatus={setStatus} empty="لا توجد مواعيد اليوم." /></TabsContent>
-          <TabsContent value="tomorrow"><CardsList list={tomorrowList} onEdit={setEditing} onDelete={deletePatient} onReschedule={reschedule} onStatus={setStatus} empty="لا توجد مواعيد غداً." /></TabsContent>
-          <TabsContent value="dayafter"><CardsList list={dayAfterList} onEdit={setEditing} onDelete={deletePatient} onReschedule={reschedule} onStatus={setStatus} empty="لا توجد مواعيد بعد غد." /></TabsContent>
-          <TabsContent value="week"><CardsList list={weekList} onEdit={setEditing} onDelete={deletePatient} onReschedule={reschedule} onStatus={setStatus} empty="لا توجد مواعيد هذا الأسبوع." showDate /></TabsContent>
-          <TabsContent value="upcoming"><CardsList list={upcomingList} onEdit={setEditing} onDelete={deletePatient} onReschedule={reschedule} onStatus={setStatus} empty="لا توجد مواعيد قادمة." showDate /></TabsContent>
+          <TabsContent value="today"><CardsList list={todayList} onEdit={setEditing} onDelete={deletePatient} onReschedule={reschedule} onSend={sendToDoctor} empty="لا توجد مواعيد اليوم." /></TabsContent>
+          <TabsContent value="tomorrow"><CardsList list={tomorrowList} onEdit={setEditing} onDelete={deletePatient} onReschedule={reschedule} onSend={sendToDoctor} empty="لا توجد مواعيد غداً." /></TabsContent>
+          <TabsContent value="dayafter"><CardsList list={dayAfterList} onEdit={setEditing} onDelete={deletePatient} onReschedule={reschedule} onSend={sendToDoctor} empty="لا توجد مواعيد بعد غد." /></TabsContent>
+          <TabsContent value="week"><CardsList list={weekList} onEdit={setEditing} onDelete={deletePatient} onReschedule={reschedule} onSend={sendToDoctor} empty="لا توجد مواعيد هذا الأسبوع." showDate /></TabsContent>
+          <TabsContent value="upcoming"><CardsList list={upcomingList} onEdit={setEditing} onDelete={deletePatient} onReschedule={reschedule} onSend={sendToDoctor} empty="لا توجد مواعيد قادمة." showDate /></TabsContent>
           <TabsContent value="history"><HistoryTable list={[...archiveList, ...todayList, ...upcomingList].sort((a, b) => (getDate(b)).localeCompare(getDate(a)))} onEdit={setEditing} onDelete={deletePatient} /></TabsContent>
         </Tabs>
 
@@ -266,14 +341,14 @@ function StatCard({ icon, label, value, big }: { icon: React.ReactNode; label: s
 
 function StatusBadge({ status }: { status: string | null }) {
   const s = STATUS_LABELS[status ?? "pending"] ?? STATUS_LABELS.pending;
-  return <Badge variant={s.variant}>{s.label}</Badge>;
+  return <span className={`inline-flex items-center rounded-md border px-2.5 py-0.5 text-xs font-semibold ${s.cls}`}>{s.label}</span>;
 }
 
 function CardsList({
-  list, onEdit, onDelete, onReschedule, onStatus, empty, showDate,
+  list, onEdit, onDelete, onReschedule, onSend, empty, showDate,
 }: {
   list: Patient[]; onEdit: (p: Patient) => void; onDelete: (id: string) => void;
-  onReschedule: (id: string, days: number) => void; onStatus: (id: string, status: string) => void;
+  onReschedule: (id: string, days: number) => void; onSend: (id: string) => void;
   empty: string; showDate?: boolean;
 }) {
   const [search, setSearch] = useState("");
@@ -304,46 +379,48 @@ function CardsList({
         </Select>
       </div>
       <div className="grid gap-3 md:grid-cols-2 lg:grid-cols-3">
-        {filtered.map((p) => (
-          <Card key={p.id} className="group transition-all hover:shadow-elegant hover:border-primary/40">
-            <CardHeader className="pb-3">
-              <div className="flex items-start justify-between gap-2">
-                <CardTitle className="truncate text-lg">{p.full_name}</CardTitle>
-                <StatusBadge status={p.status} />
-              </div>
-              <div className="flex flex-wrap items-center gap-2 text-xs text-muted-foreground">
-                {showDate && <span className="flex items-center gap-1"><CalendarDays className="h-3 w-3" />{fmtDate(p.appointment_date)}</span>}
-                {p.appointment_time && <span className="flex items-center gap-1" dir="ltr"><Clock className="h-3 w-3" />{p.appointment_time.slice(0,5)}</span>}
-              </div>
-            </CardHeader>
-            <CardContent className="space-y-2 text-sm">
-              <div className="flex flex-wrap gap-2">
-                {p.age != null && <Badge variant="secondary">العمر: {p.age}</Badge>}
-                {p.gender && <Badge variant="secondary">{p.gender}</Badge>}
-              </div>
-              {p.phone && <div className="flex items-center gap-1 text-muted-foreground"><Phone className="h-3 w-3" /><span dir="ltr">{p.phone}</span></div>}
-              {p.chronic_diseases && <div className="line-clamp-2 text-muted-foreground"><span className="font-medium">الأمراض:</span> {p.chronic_diseases}</div>}
-              <div className="flex items-center gap-2 pt-2">
-                <Select value={p.status ?? "pending"} onValueChange={(v) => onStatus(p.id, v)}>
-                  <SelectTrigger className="h-8 flex-1 text-xs"><SelectValue /></SelectTrigger>
-                  <SelectContent>
-                    <SelectItem value="pending">بانتظار</SelectItem>
-                    <SelectItem value="done">تم الفحص</SelectItem>
-                    <SelectItem value="cancelled">ملغي</SelectItem>
-                    <SelectItem value="postponed">مؤجل</SelectItem>
-                  </SelectContent>
-                </Select>
-                <Button size="icon" variant="ghost" onClick={() => onEdit(p)} title="تعديل"><Pencil className="h-4 w-4" /></Button>
-                <Button size="icon" variant="ghost" onClick={() => onDelete(p.id)} title="حذف"><Trash2 className="h-4 w-4 text-destructive" /></Button>
-              </div>
-              <div className="flex flex-wrap gap-1 pt-1">
-                <Button size="sm" variant="outline" className="h-7 text-xs" onClick={() => onReschedule(p.id, 1)}>+1 يوم</Button>
-                <Button size="sm" variant="outline" className="h-7 text-xs" onClick={() => onReschedule(p.id, 2)}>+2 يوم</Button>
-                <Button size="sm" variant="outline" className="h-7 text-xs" onClick={() => onReschedule(p.id, 7)}>+أسبوع</Button>
-              </div>
-            </CardContent>
-          </Card>
-        ))}
+        {filtered.map((p) => {
+          const isDone = (p.status ?? "pending") === "done";
+          const isSent = !!p.sent_at;
+          return (
+            <Card key={p.id} className={cn("group transition-all hover:shadow-elegant", isDone && "opacity-70", isSent && !isDone && "border-primary/60")}>
+              <CardHeader className="pb-3">
+                <div className="flex items-start justify-between gap-2">
+                  <CardTitle className="truncate text-lg">{p.full_name}</CardTitle>
+                  <StatusBadge status={p.status} />
+                </div>
+                <div className="flex flex-wrap items-center gap-2 text-xs text-muted-foreground">
+                  {showDate && <span className="flex items-center gap-1"><CalendarDays className="h-3 w-3" />{fmtDate(p.appointment_date)}</span>}
+                  {p.appointment_time && <span className="flex items-center gap-1" dir="ltr"><Clock className="h-3 w-3" />{p.appointment_time.slice(0,5)}</span>}
+                  {p.attachments && p.attachments.length > 0 && <span className="flex items-center gap-1"><Paperclip className="h-3 w-3" />{p.attachments.length}</span>}
+                  {isSent && !isDone && <span className="flex items-center gap-1 text-primary"><Check className="h-3 w-3" />مرسل للطبيب</span>}
+                </div>
+              </CardHeader>
+              <CardContent className="space-y-2 text-sm">
+                <div className="flex flex-wrap gap-2">
+                  {p.age != null && <Badge variant="secondary">العمر: {p.age}</Badge>}
+                  {p.gender && <Badge variant="secondary">{p.gender}</Badge>}
+                </div>
+                {p.phone && <div className="flex items-center gap-1 text-muted-foreground"><Phone className="h-3 w-3" /><span dir="ltr">{p.phone}</span></div>}
+                {p.chronic_diseases && <div className="line-clamp-2 text-muted-foreground"><span className="font-medium">الأمراض:</span> {p.chronic_diseases}</div>}
+                <div className="flex items-center gap-2 pt-2">
+                  {!isDone && (
+                    <Button size="sm" className="flex-1 gap-1" disabled={isSent} onClick={() => onSend(p.id)}>
+                      <Send className="h-3 w-3" />{isSent ? "تم الإرسال" : "إرسال للطبيب"}
+                    </Button>
+                  )}
+                  <Button size="icon" variant="ghost" onClick={() => onEdit(p)} title="تعديل"><Pencil className="h-4 w-4" /></Button>
+                  <Button size="icon" variant="ghost" onClick={() => onDelete(p.id)} title="حذف"><Trash2 className="h-4 w-4 text-destructive" /></Button>
+                </div>
+                <div className="flex flex-wrap gap-1 pt-1">
+                  <Button size="sm" variant="outline" className="h-7 text-xs" onClick={() => onReschedule(p.id, 1)}>+1 يوم</Button>
+                  <Button size="sm" variant="outline" className="h-7 text-xs" onClick={() => onReschedule(p.id, 2)}>+2 يوم</Button>
+                  <Button size="sm" variant="outline" className="h-7 text-xs" onClick={() => onReschedule(p.id, 7)}>+أسبوع</Button>
+                </div>
+              </CardContent>
+            </Card>
+          );
+        })}
         {filtered.length === 0 && (
           <div className="col-span-full py-12 text-center text-muted-foreground">{empty}</div>
         )}

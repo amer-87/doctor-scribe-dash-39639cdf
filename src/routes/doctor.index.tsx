@@ -9,16 +9,14 @@ import { Input } from "@/components/ui/input";
 import { Button } from "@/components/ui/button";
 import { Badge } from "@/components/ui/badge";
 import { Tabs, TabsList, TabsTrigger, TabsContent } from "@/components/ui/tabs";
-import { Search, Users, FileText, Phone, UserCheck, Pencil, Trash2, CalendarDays, Archive, Activity, Eye, Printer, Clock, Bell } from "lucide-react";
+import { Search, Users, FileText, Phone, UserCheck, Pencil, Trash2, CalendarDays, Activity, Eye, Printer, Clock, Bell, Paperclip, FileDown } from "lucide-react";
 import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogFooter } from "@/components/ui/dialog";
 import { Label } from "@/components/ui/label";
 import { Textarea } from "@/components/ui/textarea";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
 import { Calendar as CalendarUI } from "@/components/ui/calendar";
 import { toast } from "sonner";
-import {
-  Table, TableBody, TableCell, TableHead, TableHeader, TableRow,
-} from "@/components/ui/table";
+import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from "@/components/ui/table";
 
 export const Route = createFileRoute("/doctor/")({
   component: () => <RequireAuth allow={["doctor"]}><DoctorDashboard /></RequireAuth>,
@@ -28,6 +26,7 @@ interface Patient {
   id: string; full_name: string; age: number | null; gender: string | null;
   phone: string | null; chronic_diseases: string | null; notes: string | null; created_at: string;
   appointment_date: string | null; appointment_time: string | null; status: string | null;
+  sent_at: string | null; attachments: string[] | null;
 }
 interface PatientWithVisit extends Patient {
   last_visit: string | null;
@@ -35,11 +34,11 @@ interface PatientWithVisit extends Patient {
 }
 interface Secretary { id: string; full_name: string; email: string; status: string; }
 
-const STATUS_LABELS: Record<string, { label: string; variant: "default" | "secondary" | "destructive" | "outline" }> = {
-  pending: { label: "بانتظار", variant: "secondary" },
-  done: { label: "تم الفحص", variant: "default" },
-  cancelled: { label: "ملغي", variant: "destructive" },
-  postponed: { label: "مؤجل", variant: "outline" },
+const STATUS_LABELS: Record<string, { label: string; cls: string }> = {
+  pending: { label: "بانتظار", cls: "bg-amber-100 text-amber-800 border-amber-300 dark:bg-amber-900/40 dark:text-amber-200" },
+  done: { label: "تم الفحص", cls: "bg-emerald-100 text-emerald-800 border-emerald-300 dark:bg-emerald-900/40 dark:text-emerald-200" },
+  cancelled: { label: "ملغي", cls: "bg-red-100 text-red-800 border-red-300 dark:bg-red-900/40 dark:text-red-200" },
+  postponed: { label: "مؤجل", cls: "bg-slate-100 text-slate-800 border-slate-300 dark:bg-slate-800 dark:text-slate-200" },
 };
 
 function todayISO() { return new Date().toISOString().slice(0, 10); }
@@ -53,7 +52,7 @@ function DoctorDashboard() {
 
   const load = async () => {
     if (!user) return;
-    const { data: pData } = await supabase.from("patients").select("*").eq("doctor_id", user.id).order("appointment_date", { ascending: true }).order("appointment_time", { ascending: true, nullsFirst: false });
+    const { data: pData } = await supabase.from("patients").select("*").eq("doctor_id", user.id).order("appointment_date", { ascending: true });
     const { data: presc } = await supabase.from("prescriptions").select("patient_id, created_at").eq("doctor_id", user.id);
     const map = new Map<string, { last: string; count: number }>();
     (presc ?? []).forEach((p: any) => {
@@ -89,11 +88,19 @@ function DoctorDashboard() {
   const weekEnd = addDaysISO(7);
 
   const getDate = (p: Patient) => p.appointment_date ?? p.created_at.slice(0, 10);
-  const todayPatients = patients.filter((p) => getDate(p) === today);
+  // Doctor only sees patients sent by secretary (or self-added)
+  const queueSort = (a: Patient, b: Patient) => {
+    const aDone = (a.status ?? "pending") === "done" ? 1 : 0;
+    const bDone = (b.status ?? "pending") === "done" ? 1 : 0;
+    if (aDone !== bDone) return aDone - bDone;
+    const aT = a.sent_at ?? a.created_at;
+    const bT = b.sent_at ?? b.created_at;
+    return aT.localeCompare(bT);
+  };
+  const todayPatients = patients.filter((p) => getDate(p) === today && p.sent_at).sort(queueSort);
   const tomorrowPatients = patients.filter((p) => getDate(p) === tomorrow);
   const weekPatients = patients.filter((p) => { const d = getDate(p); return d >= today && d <= weekEnd; });
   const upcomingPatients = patients.filter((p) => getDate(p) > today);
-  const archivePatients = patients.filter((p) => getDate(p) < today);
 
   const pendingSecs = secretaries.filter((s) => s.status === "pending");
   const setSecStatus = async (id: string, status: "approved" | "rejected") => {
@@ -107,10 +114,11 @@ function DoctorDashboard() {
     if (error) toast.error(error.message);
     else toast.success("تم الحذف");
   };
-  const setStatus = async (id: string, status: string) => {
-    const { error } = await supabase.from("patients").update({ status }).eq("id", id);
-    if (error) toast.error(error.message);
-    else toast.success("تم تحديث الحالة");
+
+  const printDailyPdf = () => {
+    const ids = todayPatients.map((p) => p.id).join(",");
+    if (!ids) { toast.error("لا يوجد مراجعين اليوم"); return; }
+    window.open(`/doctor/print-today?ids=${ids}`, "_blank");
   };
 
   return (
@@ -118,20 +126,21 @@ function DoctorDashboard() {
       <AppHeader />
       <main className="container mx-auto p-4 md:p-8">
         <div className="mb-6 grid gap-3 md:grid-cols-4">
-          <StatCard icon={<Activity className="h-5 w-5" />} label="مواعيد اليوم" value={todayPatients.length} color="text-primary" />
+          <StatCard icon={<Activity className="h-5 w-5" />} label="مراجعو اليوم (مرسلين)" value={todayPatients.length} color="text-primary" />
           <StatCard icon={<Bell className="h-5 w-5" />} label="مواعيد الغد" value={tomorrowPatients.length} color="text-warning" />
           <StatCard icon={<CalendarDays className="h-5 w-5" />} label="هذا الأسبوع" value={weekPatients.length} color="text-success" />
           <StatCard icon={<Users className="h-5 w-5" />} label="إجمالي المراجعين" value={patients.length} color="text-muted-foreground" />
         </div>
 
-        {tomorrowPatients.length > 0 && (
-          <Card className="mb-6 border-warning/40 bg-warning/5">
-            <CardContent className="flex items-center gap-3 p-4">
-              <Bell className="h-5 w-5 text-warning" />
-              <div className="text-sm">لديك <strong>{tomorrowPatients.length}</strong> موعد غداً.</div>
-            </CardContent>
-          </Card>
-        )}
+        <div className="mb-6 flex flex-wrap items-center justify-between gap-2">
+          <div className="text-sm text-muted-foreground">
+            {tomorrowPatients.length > 0 && <span>🔔 لديك <strong>{tomorrowPatients.length}</strong> موعد غداً.</span>}
+          </div>
+          <Button onClick={printDailyPdf} className="gap-2">
+            <FileDown className="h-4 w-4" />
+            حفظ PDF اليومي
+          </Button>
+        </div>
 
         {pendingSecs.length > 0 && (
           <Card className="mb-6 border-warning/40 bg-warning/5">
@@ -161,29 +170,25 @@ function DoctorDashboard() {
             <TabsTrigger value="upcoming"><Clock className="ml-1 h-4 w-4" />القادمة</TabsTrigger>
             <TabsTrigger value="calendar"><CalendarDays className="ml-1 h-4 w-4" />التقويم</TabsTrigger>
             <TabsTrigger value="records"><FileText className="ml-1 h-4 w-4" />السجل</TabsTrigger>
-            <TabsTrigger value="archive"><Archive className="ml-1 h-4 w-4" />الأرشيف</TabsTrigger>
           </TabsList>
 
           <TabsContent value="today">
-            <AppointmentList patients={todayPatients} emptyText="لا توجد مواعيد اليوم." onEdit={setEditing} onDelete={deletePatient} onSetStatus={setStatus} />
+            <AppointmentList patients={todayPatients} emptyText="لا يوجد مراجعون مرسلين من السكرتير." onEdit={setEditing} onDelete={deletePatient} />
           </TabsContent>
           <TabsContent value="tomorrow">
-            <AppointmentList patients={tomorrowPatients} emptyText="لا توجد مواعيد غداً." onEdit={setEditing} onDelete={deletePatient} onSetStatus={setStatus} />
+            <AppointmentList patients={tomorrowPatients} emptyText="لا توجد مواعيد غداً." onEdit={setEditing} onDelete={deletePatient} />
           </TabsContent>
           <TabsContent value="week">
-            <AppointmentList patients={weekPatients} emptyText="لا توجد مواعيد هذا الأسبوع." onEdit={setEditing} onDelete={deletePatient} onSetStatus={setStatus} showDate />
+            <AppointmentList patients={weekPatients} emptyText="لا توجد مواعيد هذا الأسبوع." onEdit={setEditing} onDelete={deletePatient} showDate />
           </TabsContent>
           <TabsContent value="upcoming">
-            <AppointmentList patients={upcomingPatients} emptyText="لا توجد مواعيد قادمة." onEdit={setEditing} onDelete={deletePatient} onSetStatus={setStatus} showDate />
+            <AppointmentList patients={upcomingPatients} emptyText="لا توجد مواعيد قادمة." onEdit={setEditing} onDelete={deletePatient} showDate />
           </TabsContent>
           <TabsContent value="calendar">
-            <CalendarView patients={patients} onEdit={setEditing} onDelete={deletePatient} onSetStatus={setStatus} />
+            <CalendarView patients={patients} onEdit={setEditing} onDelete={deletePatient} />
           </TabsContent>
           <TabsContent value="records">
             <RecordsTable patients={patients} onEdit={setEditing} onDelete={deletePatient} />
-          </TabsContent>
-          <TabsContent value="archive">
-            <RecordsTable patients={archivePatients} onEdit={setEditing} onDelete={deletePatient} hideTodayHint />
           </TabsContent>
         </Tabs>
 
@@ -209,15 +214,14 @@ function StatCard({ icon, label, value, color }: { icon: React.ReactNode; label:
 
 function StatusBadge({ status }: { status: string | null }) {
   const s = STATUS_LABELS[status ?? "pending"] ?? STATUS_LABELS.pending;
-  return <Badge variant={s.variant}>{s.label}</Badge>;
+  return <span className={`inline-flex items-center rounded-md border px-2.5 py-0.5 text-xs font-semibold ${s.cls}`}>{s.label}</span>;
 }
 
 function AppointmentList({
-  patients, emptyText, onEdit, onDelete, onSetStatus, showDate,
+  patients, emptyText, onEdit, onDelete, showDate,
 }: {
   patients: PatientWithVisit[]; emptyText: string;
-  onEdit: (p: Patient) => void; onDelete: (id: string) => void;
-  onSetStatus: (id: string, status: string) => void; showDate?: boolean;
+  onEdit: (p: Patient) => void; onDelete: (id: string) => void; showDate?: boolean;
 }) {
   const [search, setSearch] = useState("");
   const [statusFilter, setStatusFilter] = useState<string>("all");
@@ -247,47 +251,42 @@ function AppointmentList({
         </Select>
       </div>
       <div className="grid gap-3 md:grid-cols-2 lg:grid-cols-3">
-        {filtered.map((p) => (
-          <Card key={p.id} className="group transition-all hover:shadow-elegant">
-            <CardHeader className="pb-3">
-              <div className="flex items-start justify-between gap-2">
-                <Link to="/doctor/patient/$id" params={{ id: p.id }} className="flex-1 min-w-0">
-                  <CardTitle className="text-lg hover:text-primary transition-colors truncate">{p.full_name}</CardTitle>
-                </Link>
-                <StatusBadge status={p.status} />
-              </div>
-              <div className="flex flex-wrap items-center gap-2 text-xs text-muted-foreground">
-                {showDate && <span className="flex items-center gap-1"><CalendarDays className="h-3 w-3" />{fmtDate(p.appointment_date)}</span>}
-                {p.appointment_time && <span className="flex items-center gap-1" dir="ltr"><Clock className="h-3 w-3" />{p.appointment_time.slice(0,5)}</span>}
-              </div>
-            </CardHeader>
-            <CardContent className="space-y-2 text-sm">
-              <div className="flex flex-wrap gap-2">
-                {p.age != null && <Badge variant="secondary">العمر: {p.age}</Badge>}
-                {p.gender && <Badge variant="secondary">{p.gender}</Badge>}
-                {p.visit_count > 0 && <Badge>{p.visit_count} زيارة</Badge>}
-              </div>
-              {p.phone && <div className="flex items-center gap-1 text-muted-foreground"><Phone className="h-3 w-3" /><span dir="ltr">{p.phone}</span></div>}
-              {p.chronic_diseases && <div className="text-muted-foreground line-clamp-2"><span className="font-medium">الأمراض:</span> {p.chronic_diseases}</div>}
-              <div className="flex items-center gap-2 pt-2">
-                <Select value={p.status ?? "pending"} onValueChange={(v) => onSetStatus(p.id, v)}>
-                  <SelectTrigger className="h-8 text-xs flex-1"><SelectValue /></SelectTrigger>
-                  <SelectContent>
-                    <SelectItem value="pending">بانتظار</SelectItem>
-                    <SelectItem value="done">تم الفحص</SelectItem>
-                    <SelectItem value="cancelled">ملغي</SelectItem>
-                    <SelectItem value="postponed">مؤجل</SelectItem>
-                  </SelectContent>
-                </Select>
-                <Button size="icon" variant="ghost" onClick={() => onEdit(p)} title="تعديل"><Pencil className="h-4 w-4" /></Button>
-                <Button size="icon" variant="ghost" onClick={() => onDelete(p.id)} title="حذف"><Trash2 className="h-4 w-4 text-destructive" /></Button>
-              </div>
-              <Link to="/doctor/patient/$id" params={{ id: p.id }}>
-                <Button variant="outline" size="sm" className="w-full"><FileText className="ml-1 h-4 w-4" />الوصفة الطبية</Button>
-              </Link>
-            </CardContent>
-          </Card>
-        ))}
+        {filtered.map((p) => {
+          const isDone = (p.status ?? "pending") === "done";
+          return (
+            <Card key={p.id} className={`group transition-all hover:shadow-elegant ${isDone ? "opacity-70" : ""}`}>
+              <CardHeader className="pb-3">
+                <div className="flex items-start justify-between gap-2">
+                  <Link to="/doctor/patient/$id" params={{ id: p.id }} className="flex-1 min-w-0">
+                    <CardTitle className="text-lg hover:text-primary transition-colors truncate">{p.full_name}</CardTitle>
+                  </Link>
+                  <StatusBadge status={p.status} />
+                </div>
+                <div className="flex flex-wrap items-center gap-2 text-xs text-muted-foreground">
+                  {showDate && <span className="flex items-center gap-1"><CalendarDays className="h-3 w-3" />{fmtDate(p.appointment_date)}</span>}
+                  {p.appointment_time && <span className="flex items-center gap-1" dir="ltr"><Clock className="h-3 w-3" />{p.appointment_time.slice(0,5)}</span>}
+                  {p.attachments && p.attachments.length > 0 && <span className="flex items-center gap-1"><Paperclip className="h-3 w-3" />{p.attachments.length}</span>}
+                </div>
+              </CardHeader>
+              <CardContent className="space-y-2 text-sm">
+                <div className="flex flex-wrap gap-2">
+                  {p.age != null && <Badge variant="secondary">العمر: {p.age}</Badge>}
+                  {p.gender && <Badge variant="secondary">{p.gender}</Badge>}
+                  {p.visit_count > 0 && <Badge>{p.visit_count} زيارة</Badge>}
+                </div>
+                {p.phone && <div className="flex items-center gap-1 text-muted-foreground"><Phone className="h-3 w-3" /><span dir="ltr">{p.phone}</span></div>}
+                {p.chronic_diseases && <div className="text-muted-foreground line-clamp-2"><span className="font-medium">الأمراض:</span> {p.chronic_diseases}</div>}
+                <div className="flex items-center gap-2 pt-2">
+                  <Link to="/doctor/patient/$id" params={{ id: p.id }} className="flex-1">
+                    <Button variant="default" size="sm" className="w-full"><FileText className="ml-1 h-4 w-4" />الوصفة الطبية</Button>
+                  </Link>
+                  <Button size="icon" variant="ghost" onClick={() => onEdit(p)} title="تعديل"><Pencil className="h-4 w-4" /></Button>
+                  <Button size="icon" variant="ghost" onClick={() => onDelete(p.id)} title="حذف"><Trash2 className="h-4 w-4 text-destructive" /></Button>
+                </div>
+              </CardContent>
+            </Card>
+          );
+        })}
         {filtered.length === 0 && (
           <div className="col-span-full py-12 text-center text-muted-foreground">{emptyText}</div>
         )}
@@ -296,10 +295,9 @@ function AppointmentList({
   );
 }
 
-function CalendarView({ patients, onEdit, onDelete, onSetStatus }: {
+function CalendarView({ patients, onEdit, onDelete }: {
   patients: PatientWithVisit[];
   onEdit: (p: Patient) => void; onDelete: (id: string) => void;
-  onSetStatus: (id: string, status: string) => void;
 }) {
   const [selected, setSelected] = useState<Date | undefined>(new Date());
   const dayKey = (d: Date) => `${d.getFullYear()}-${String(d.getMonth()+1).padStart(2,"0")}-${String(d.getDate()).padStart(2,"0")}`;
@@ -325,13 +323,13 @@ function CalendarView({ patients, onEdit, onDelete, onSetStatus }: {
           {selected ? selected.toLocaleDateString("ar-EG", { weekday: "long", year: "numeric", month: "long", day: "numeric" }) : "اختر تاريخاً"}
           {" — "}{dayPatients.length} موعد
         </div>
-        <AppointmentList patients={dayPatients} emptyText="لا توجد مواعيد في هذا اليوم." onEdit={onEdit} onDelete={onDelete} onSetStatus={onSetStatus} />
+        <AppointmentList patients={dayPatients} emptyText="لا توجد مواعيد في هذا اليوم." onEdit={onEdit} onDelete={onDelete} />
       </div>
     </div>
   );
 }
 
-function RecordsTable({ patients, onEdit, onDelete, hideTodayHint }: { patients: PatientWithVisit[]; onEdit: (p: Patient) => void; onDelete: (id: string) => void; hideTodayHint?: boolean }) {
+function RecordsTable({ patients, onEdit, onDelete }: { patients: PatientWithVisit[]; onEdit: (p: Patient) => void; onDelete: (id: string) => void }) {
   const [search, setSearch] = useState("");
   const [from, setFrom] = useState("");
   const [to, setTo] = useState("");
@@ -366,14 +364,8 @@ function RecordsTable({ patients, onEdit, onDelete, hideTodayHint }: { patients:
             <Search className="h-4 w-4 text-muted-foreground" />
             <Input placeholder="بحث بالاسم أو الهاتف..." value={search} onChange={(e) => setSearch(e.target.value)} />
           </div>
-          <div>
-            <Label className="text-xs">من تاريخ</Label>
-            <Input type="date" value={from} onChange={(e) => setFrom(e.target.value)} />
-          </div>
-          <div>
-            <Label className="text-xs">إلى تاريخ</Label>
-            <Input type="date" value={to} onChange={(e) => setTo(e.target.value)} />
-          </div>
+          <div><Label className="text-xs">من تاريخ</Label><Input type="date" value={from} onChange={(e) => setFrom(e.target.value)} /></div>
+          <div><Label className="text-xs">إلى تاريخ</Label><Input type="date" value={to} onChange={(e) => setTo(e.target.value)} /></div>
           <div>
             <Label className="text-xs">فترة سريعة</Label>
             <Select value={period} onValueChange={(v: any) => setPeriod(v)}>
@@ -387,11 +379,6 @@ function RecordsTable({ patients, onEdit, onDelete, hideTodayHint }: { patients:
             </Select>
           </div>
         </div>
-        {!hideTodayHint && (
-          <div className="text-xs text-muted-foreground flex items-center gap-1">
-            <CalendarDays className="h-3 w-3" />السجل الطبي يحتوي على جميع المراجعين منذ بداية استخدام النظام
-          </div>
-        )}
         <div className="overflow-x-auto">
           <Table>
             <TableHeader>
