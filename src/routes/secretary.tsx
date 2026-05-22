@@ -285,7 +285,14 @@ function SecretaryPage() {
                 </div>
                 <div>
                   <Label>رقم الهاتف</Label>
-                  <Input value={form.phone} onChange={(e) => setForm({ ...form, phone: e.target.value })} dir="ltr" />
+                  <Input
+                    inputMode="numeric"
+                    pattern="[0-9]*"
+                    value={form.phone}
+                    onChange={(e) => setForm({ ...form, phone: e.target.value.replace(/\D/g, "") })}
+                    dir="ltr"
+                    placeholder="07XXXXXXXXX"
+                  />
                 </div>
                 <div className="md:col-span-2">
                   <Label>الأمراض المزمنة</Label>
