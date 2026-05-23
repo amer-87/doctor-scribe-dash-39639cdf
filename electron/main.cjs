@@ -1,4 +1,5 @@
 // Electron main process — wraps the published web app in a native desktop window.
+// v1.0.1
 const { app, BrowserWindow, Menu, shell } = require('electron');
 const path = require('path');
 
