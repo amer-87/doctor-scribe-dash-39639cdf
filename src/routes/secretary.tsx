@@ -17,6 +17,7 @@ import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from "@
 import { Calendar, Users, UserPlus, Loader2, Pencil, Trash2, Clock, Phone, Search, CalendarDays, Archive, Activity, Bell, CalendarClock, Send, Camera, X, Paperclip, Check } from "lucide-react";
 import { toast } from "sonner";
 import { cn } from "@/lib/utils";
+import { getAttachmentSignedUrls } from "@/lib/attachments";
 
 export const Route = createFileRoute("/secretary")({
   component: () => <RequireAuth allow={["secretary"]}><SecretaryPage /></RequireAuth>,
