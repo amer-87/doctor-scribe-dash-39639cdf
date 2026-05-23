@@ -81,17 +81,16 @@ function SecretaryPage() {
   const handleUpload = async (files: FileList | null) => {
     if (!files || files.length === 0 || !user) return;
     setUploading(true);
-    const urls: string[] = [];
+    const paths: string[] = [];
     for (const f of Array.from(files)) {
       const path = `${user.id}/${Date.now()}-${f.name}`;
       const { error } = await supabase.storage.from("attachments").upload(path, f);
       if (error) { toast.error(error.message); continue; }
-      const { data } = supabase.storage.from("attachments").getPublicUrl(path);
-      urls.push(data.publicUrl);
+      paths.push(path);
     }
-    setAttachments((a) => [...a, ...urls]);
+    setAttachments((a) => [...a, ...paths]);
     setUploading(false);
-    if (urls.length) toast.success(`تم رفع ${urls.length} مرفق`);
+    if (paths.length) toast.success(`تم رفع ${paths.length} مرفق`);
   };
 
   const submit = async (e: React.FormEvent, sendNow: boolean) => {
