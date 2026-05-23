@@ -49,9 +49,17 @@ function SecretaryPage() {
   const [editing, setEditing] = useState<Patient | null>(null);
   const [showForm, setShowForm] = useState(false);
   const [attachments, setAttachments] = useState<string[]>([]);
+  const [previewUrls, setPreviewUrls] = useState<string[]>([]);
   const [uploading, setUploading] = useState(false);
   const cameraRef = useRef<HTMLInputElement>(null);
   const fileRef = useRef<HTMLInputElement>(null);
+
+  useEffect(() => {
+    let cancelled = false;
+    if (attachments.length === 0) { setPreviewUrls([]); return; }
+    getAttachmentSignedUrls(attachments).then((urls) => { if (!cancelled) setPreviewUrls(urls); });
+    return () => { cancelled = true; };
+  }, [attachments]);
 
   const emptyForm = {
     full_name: "", age: "", gender: "", phone: "", chronic_diseases: "", notes: "",
