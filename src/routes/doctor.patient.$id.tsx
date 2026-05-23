@@ -159,11 +159,14 @@ function PrescriptionPage() {
               <Paperclip className="h-4 w-4" />المرفقات ({patient.attachments.length})
             </div>
             <div className="flex flex-wrap gap-2">
-              {patient.attachments.map((url, i) => (
-                <a key={i} href={url} target="_blank" rel="noreferrer">
-                  <img src={url} alt={`attachment-${i}`} className="h-24 w-24 rounded border object-cover transition-transform hover:scale-105" />
-                </a>
-              ))}
+              {patient.attachments.map((_v, i) => {
+                const url = attachmentUrls[i] ?? "";
+                return (
+                  <a key={i} href={url} target="_blank" rel="noreferrer">
+                    <img src={url} alt={`attachment-${i}`} className="h-24 w-24 rounded border object-cover transition-transform hover:scale-105" />
+                  </a>
+                );
+              })}
             </div>
           </Card>
         )}
