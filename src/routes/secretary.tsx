@@ -327,9 +327,9 @@ function SecretaryPage() {
                   </div>
                   {attachments.length > 0 && (
                     <div className="mt-3 flex flex-wrap gap-2">
-                      {attachments.map((url, i) => (
+                      {attachments.map((_path, i) => (
                         <div key={i} className="relative">
-                          <img src={url} alt={`attachment-${i}`} className="h-20 w-20 rounded border object-cover" />
+                          <img src={previewUrls[i] ?? ""} alt={`attachment-${i}`} className="h-20 w-20 rounded border object-cover" />
                           <button type="button" onClick={() => setAttachments((a) => a.filter((_, j) => j !== i))} className="absolute -top-2 -left-2 rounded-full bg-destructive p-0.5 text-destructive-foreground"><X className="h-3 w-3" /></button>
                         </div>
                       ))}
