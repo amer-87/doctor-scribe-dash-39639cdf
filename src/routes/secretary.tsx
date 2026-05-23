@@ -17,6 +17,7 @@ import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from "@
 import { Calendar, Users, UserPlus, Loader2, Pencil, Trash2, Clock, Phone, Search, CalendarDays, Archive, Activity, Bell, CalendarClock, Send, Camera, X, Paperclip, Check } from "lucide-react";
 import { toast } from "sonner";
 import { cn } from "@/lib/utils";
+import { getAttachmentSignedUrls } from "@/lib/attachments";
 
 export const Route = createFileRoute("/secretary")({
   component: () => <RequireAuth allow={["secretary"]}><SecretaryPage /></RequireAuth>,
@@ -48,9 +49,17 @@ function SecretaryPage() {
   const [editing, setEditing] = useState<Patient | null>(null);
   const [showForm, setShowForm] = useState(false);
   const [attachments, setAttachments] = useState<string[]>([]);
+  const [previewUrls, setPreviewUrls] = useState<string[]>([]);
   const [uploading, setUploading] = useState(false);
   const cameraRef = useRef<HTMLInputElement>(null);
   const fileRef = useRef<HTMLInputElement>(null);
+
+  useEffect(() => {
+    let cancelled = false;
+    if (attachments.length === 0) { setPreviewUrls([]); return; }
+    getAttachmentSignedUrls(attachments).then((urls) => { if (!cancelled) setPreviewUrls(urls); });
+    return () => { cancelled = true; };
+  }, [attachments]);
 
   const emptyForm = {
     full_name: "", age: "", gender: "", phone: "", chronic_diseases: "", notes: "",
@@ -81,17 +90,16 @@ function SecretaryPage() {
   const handleUpload = async (files: FileList | null) => {
     if (!files || files.length === 0 || !user) return;
     setUploading(true);
-    const urls: string[] = [];
+    const paths: string[] = [];
     for (const f of Array.from(files)) {
       const path = `${user.id}/${Date.now()}-${f.name}`;
       const { error } = await supabase.storage.from("attachments").upload(path, f);
       if (error) { toast.error(error.message); continue; }
-      const { data } = supabase.storage.from("attachments").getPublicUrl(path);
-      urls.push(data.publicUrl);
+      paths.push(path);
     }
-    setAttachments((a) => [...a, ...urls]);
+    setAttachments((a) => [...a, ...paths]);
     setUploading(false);
-    if (urls.length) toast.success(`تم رفع ${urls.length} مرفق`);
+    if (paths.length) toast.success(`تم رفع ${paths.length} مرفق`);
   };
 
   const submit = async (e: React.FormEvent, sendNow: boolean) => {
@@ -319,9 +327,9 @@ function SecretaryPage() {
                   </div>
                   {attachments.length > 0 && (
                     <div className="mt-3 flex flex-wrap gap-2">
-                      {attachments.map((url, i) => (
+                      {attachments.map((_path, i) => (
                         <div key={i} className="relative">
-                          <img src={url} alt={`attachment-${i}`} className="h-20 w-20 rounded border object-cover" />
+                          <img src={previewUrls[i] ?? ""} alt={`attachment-${i}`} className="h-20 w-20 rounded border object-cover" />
                           <button type="button" onClick={() => setAttachments((a) => a.filter((_, j) => j !== i))} className="absolute -top-2 -left-2 rounded-full bg-destructive p-0.5 text-destructive-foreground"><X className="h-3 w-3" /></button>
                         </div>
                       ))}
