@@ -40,6 +40,15 @@ function PrescriptionPage() {
   const [prescriptionId, setPrescriptionId] = useState<string | null>(null);
   const [finishing, setFinishing] = useState(false);
   const [loading, setLoading] = useState(true);
+  const [attachmentUrls, setAttachmentUrls] = useState<string[]>([]);
+
+  useEffect(() => {
+    let cancelled = false;
+    const list = patient?.attachments ?? [];
+    if (list.length === 0) { setAttachmentUrls([]); return; }
+    getAttachmentSignedUrls(list).then((urls) => { if (!cancelled) setAttachmentUrls(urls); });
+    return () => { cancelled = true; };
+  }, [patient?.attachments]);
 
   const rxPrefix = settings?.rx_prefix || "Rx";
 
