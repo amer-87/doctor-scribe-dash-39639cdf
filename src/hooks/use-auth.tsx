@@ -35,28 +35,43 @@ export function AuthProvider({ children }: { children: ReactNode }) {
   const [loading, setLoading] = useState(true);
 
   const loadUserData = async (userId: string) => {
-    const [{ data: roleRow }, { data: prof }] = await Promise.all([
+    setLoading(true);
+    const [{ data: roleRow, error: roleError }, { data: prof, error: profileError }] = await Promise.all([
       supabase.from("user_roles").select("role").eq("user_id", userId).maybeSingle(),
       supabase.from("profiles").select("*").eq("id", userId).maybeSingle(),
     ]);
+
+    if (roleError || profileError) {
+      console.error("Failed to load account data", { roleError, profileError, userId });
+    }
+
     setRole((roleRow?.role as Role) ?? null);
     setProfile((prof as Profile) ?? null);
+    setLoading(false);
   };
 
   useEffect(() => {
     const { data: sub } = supabase.auth.onAuthStateChange((_event, sess) => {
       setSession(sess);
       if (sess?.user) {
-        setTimeout(() => loadUserData(sess.user.id), 0);
+        setRole(null);
+        setProfile(null);
+        setTimeout(() => void loadUserData(sess.user.id), 0);
       } else {
         setRole(null);
         setProfile(null);
+        setLoading(false);
       }
     });
     supabase.auth.getSession().then(({ data: { session: sess } }) => {
       setSession(sess);
-      if (sess?.user) loadUserData(sess.user.id).finally(() => setLoading(false));
-      else setLoading(false);
+      if (sess?.user) {
+        setRole(null);
+        setProfile(null);
+        void loadUserData(sess.user.id);
+      } else {
+        setLoading(false);
+      }
     });
     return () => sub.subscription.unsubscribe();
   }, []);
