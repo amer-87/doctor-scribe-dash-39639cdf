@@ -11,6 +11,7 @@ import { ArrowRight, Printer, Loader2, ShieldCheck, CheckCircle2, Paperclip } fr
 import { toast } from "sonner";
 import { QRCodeSVG } from "qrcode.react";
 import { splitSpecialty } from "@/components/PrescriptionPreview";
+import { getAttachmentSignedUrls } from "@/lib/attachments";
 
 export const Route = createFileRoute("/doctor/patient/$id")({
   component: () => <RequireAuth allow={["doctor"]}><PrescriptionPage /></RequireAuth>,
