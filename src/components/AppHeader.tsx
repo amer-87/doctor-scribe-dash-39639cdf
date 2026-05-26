@@ -1,18 +1,39 @@
 import { Link, useNavigate } from "@tanstack/react-router";
+import { useEffect, useState } from "react";
 import { Button } from "@/components/ui/button";
-import { Moon, Sun, LogOut, Stethoscope, Settings, Users, ShieldCheck, KeyRound } from "lucide-react";
+import { Moon, Sun, LogOut, Stethoscope, Settings, Users, ShieldCheck, KeyRound, AlertTriangle } from "lucide-react";
 import { useAuth } from "@/hooks/use-auth";
 import { useTheme } from "@/hooks/use-theme";
+import { supabase } from "@/integrations/supabase/client";
 
 export function AppHeader() {
-  const { profile, role, signOut } = useAuth();
+  const { profile, role, signOut, user } = useAuth();
   const { theme, toggle } = useTheme();
   const nav = useNavigate();
+  const [daysLeft, setDaysLeft] = useState<number | null>(null);
+
+  useEffect(() => {
+    if (!user || role !== "doctor") { setDaysLeft(null); return; }
+    const load = () =>
+      supabase.from("profiles").select("subscription_end").eq("id", user.id).maybeSingle().then(({ data }) => {
+        const end = (data as any)?.subscription_end as string | null;
+        if (!end) { setDaysLeft(null); return; }
+        const d = Math.ceil((new Date(end).getTime() - Date.now()) / 86400000);
+        setDaysLeft(d);
+      });
+    load();
+    const ch = supabase.channel(`subexp-${user.id}`)
+      .on("postgres_changes", { event: "UPDATE", schema: "public", table: "profiles", filter: `id=eq.${user.id}` }, load)
+      .subscribe();
+    return () => { supabase.removeChannel(ch); };
+  }, [user, role]);
 
   const handleLogout = async () => {
     await signOut();
     nav({ to: "/auth" });
   };
+
+  const showWarn = role === "doctor" && daysLeft !== null && daysLeft <= 7;
 
   return (
     <header className="sticky top-0 z-40 w-full border-b bg-card/80 backdrop-blur-md no-print">
@@ -59,6 +80,19 @@ export function AppHeader() {
           </Button>
         </nav>
       </div>
+
+      {showWarn && (
+        <Link to="/doctor/settings" className="block">
+          <div className={`flex items-center justify-center gap-2 px-4 py-1.5 text-xs font-medium ${daysLeft! <= 0 ? "bg-destructive text-destructive-foreground" : "bg-amber-500 text-white"}`}>
+            <AlertTriangle className="h-3.5 w-3.5" />
+            {daysLeft! <= 0
+              ? "انتهى اشتراكك — يرجى التجديد"
+              : daysLeft === 1
+                ? "ينتهي اشتراكك غداً — يرجى التجديد"
+                : `يتبقى ${daysLeft} أيام على نهاية اشتراكك — يرجى التجديد`}
+          </div>
+        </Link>
+      )}
     </header>
   );
 }

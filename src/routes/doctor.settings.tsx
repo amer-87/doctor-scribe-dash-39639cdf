@@ -190,12 +190,19 @@ function Settings() {
 }
 
 function DoctorIdCard({ userId }: { userId: string }) {
-  const copy = () => { navigator.clipboard.writeText(userId); toast.success("تم نسخ المعرف"); };
+  const [code, setCode] = useState<string>("");
+  useEffect(() => {
+    if (!userId) return;
+    supabase.from("profiles").select("short_code").eq("id", userId).maybeSingle().then(({ data }) => {
+      setCode((data as any)?.short_code ?? "");
+    });
+  }, [userId]);
+  const copy = () => { if (code) { navigator.clipboard.writeText(code); toast.success("تم نسخ المعرف"); } };
   return (
     <Card>
       <CardHeader><CardTitle>معرف الطبيب (لمشاركته مع السكرتير)</CardTitle></CardHeader>
       <CardContent className="flex items-center gap-2">
-        <Input value={userId} readOnly dir="ltr" className="font-mono text-xs" />
+        <Input value={code} readOnly dir="ltr" className="font-mono text-lg tracking-widest text-center" placeholder="..." />
         <Button variant="outline" onClick={copy}><Copy className="h-4 w-4" /></Button>
       </CardContent>
     </Card>

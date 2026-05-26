@@ -232,6 +232,7 @@ export type Database = {
           is_active: boolean
           phone: string | null
           rejection_reason: string | null
+          short_code: string | null
           specialty: string | null
           status: Database["public"]["Enums"]["account_status"]
           subscription_end: string | null
@@ -249,6 +250,7 @@ export type Database = {
           is_active?: boolean
           phone?: string | null
           rejection_reason?: string | null
+          short_code?: string | null
           specialty?: string | null
           status?: Database["public"]["Enums"]["account_status"]
           subscription_end?: string | null
@@ -266,6 +268,7 @@ export type Database = {
           is_active?: boolean
           phone?: string | null
           rejection_reason?: string | null
+          short_code?: string | null
           specialty?: string | null
           status?: Database["public"]["Enums"]["account_status"]
           subscription_end?: string | null
@@ -298,6 +301,8 @@ export type Database = {
     }
     Functions: {
       can_write: { Args: { _user_id: string }; Returns: boolean }
+      find_doctor_by_code: { Args: { _code: string }; Returns: string }
+      generate_doctor_short_code: { Args: never; Returns: string }
       get_effective_doctor_id: { Args: { _user_id: string }; Returns: string }
       has_role: {
         Args: {
