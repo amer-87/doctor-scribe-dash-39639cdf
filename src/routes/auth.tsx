@@ -13,13 +13,16 @@ import { Stethoscope, Loader2 } from "lucide-react";
 
 export const Route = createFileRoute("/auth")({ component: AuthPage });
 
+const USERNAME_DOMAIN = "clinic.local";
+const toEmail = (v: string) => v.includes("@") ? v.trim() : `${v.trim().toLowerCase()}@${USERNAME_DOMAIN}`;
+
 function AuthPage() {
   const { session, loading: authLoading } = useAuth();
   const nav = useNavigate();
   useEffect(() => { if (!authLoading && session) nav({ to: "/" }); }, [session, authLoading, nav]);
 
-  // Login state
-  const [loginEmail, setLoginEmail] = useState("");
+  // Login state (email OR username)
+  const [loginId, setLoginId] = useState("");
   const [loginPwd, setLoginPwd] = useState("");
   const [loginLoading, setLoginLoading] = useState(false);
 
@@ -27,22 +30,13 @@ function AuthPage() {
   const [signupRole, setSignupRole] = useState<"doctor" | "secretary">("doctor");
   const [fullName, setFullName] = useState("");
   const [email, setEmail] = useState("");
+  const [username, setUsername] = useState(""); // secretary only
   const [pwd, setPwd] = useState("");
   const [phone, setPhone] = useState("");
   const [specialty, setSpecialty] = useState("");
   const [clinicName, setClinicName] = useState("");
-  const [doctorId, setDoctorId] = useState("");
-  const [doctors, setDoctors] = useState<{ id: string; full_name: string; clinic_name: string | null }[]>([]);
+  const [doctorCode, setDoctorCode] = useState("");
   const [signupLoading, setSignupLoading] = useState(false);
-
-  useEffect(() => {
-    if (signupRole === "secretary") {
-      // Public-ish: list approved doctors (RLS blocks this for anon — fallback: free text)
-      supabase.from("profiles").select("id,full_name,clinic_name").eq("status", "approved").then(({ data }) => {
-        if (data) setDoctors(data as typeof doctors);
-      });
-    }
-  }, [signupRole]);
 
   const logLogin = async (userId: string, email: string) => {
     const ua = typeof navigator !== "undefined" ? navigator.userAgent : "";
@@ -56,24 +50,32 @@ function AuthPage() {
   const handleLogin = async (e: React.FormEvent) => {
     e.preventDefault();
     setLoginLoading(true);
-    const { data, error } = await supabase.auth.signInWithPassword({ email: loginEmail, password: loginPwd });
+    const emailResolved = toEmail(loginId);
+    const { data, error } = await supabase.auth.signInWithPassword({ email: emailResolved, password: loginPwd });
     setLoginLoading(false);
     if (error) toast.error(error.message);
     else {
-      if (data.user) await logLogin(data.user.id, data.user.email ?? loginEmail);
+      if (data.user) await logLogin(data.user.id, data.user.email ?? emailResolved);
       toast.success("تم تسجيل الدخول"); nav({ to: "/" });
     }
   };
 
   const handleSignup = async (e: React.FormEvent) => {
     e.preventDefault();
-    if (signupRole === "secretary" && !doctorId) {
-      toast.error("يرجى إدخال معرف الطبيب");
-      return;
+    let doctorId: string | null = null;
+    let signupEmail = email;
+    if (signupRole === "secretary") {
+      const code = doctorCode.trim().toUpperCase();
+      if (code.length !== 8) { toast.error("معرف الطبيب يجب أن يكون 8 رموز"); return; }
+      if (!username.trim()) { toast.error("يرجى إدخال اسم المستخدم"); return; }
+      const { data: did, error: lookupErr } = await supabase.rpc("find_doctor_by_code", { _code: code });
+      if (lookupErr || !did) { toast.error("لم يتم العثور على طبيب بهذا المعرف"); return; }
+      doctorId = did as string;
+      signupEmail = toEmail(username);
     }
     setSignupLoading(true);
     const { error } = await supabase.auth.signUp({
-      email, password: pwd,
+      email: signupEmail, password: pwd,
       options: {
         emailRedirectTo: `${window.location.origin}/`,
         data: {
@@ -90,8 +92,8 @@ function AuthPage() {
     if (error) toast.error(error.message);
     else {
       toast.success("تم إنشاء الحساب. الحساب بانتظار الموافقة.");
-      const { data: signed } = await supabase.auth.signInWithPassword({ email, password: pwd });
-      if (signed.user) await logLogin(signed.user.id, signed.user.email ?? email);
+      const { data: signed } = await supabase.auth.signInWithPassword({ email: signupEmail, password: pwd });
+      if (signed.user) await logLogin(signed.user.id, signed.user.email ?? signupEmail);
       nav({ to: "/" });
     }
   };
