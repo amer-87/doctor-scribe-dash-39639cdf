@@ -122,7 +122,10 @@ function AuthPage() {
 
               <TabsContent value="login" className="mt-4">
                 <form onSubmit={handleLogin} className="space-y-3">
-                  <div><Label>البريد الإلكتروني</Label><Input type="email" required value={loginEmail} onChange={(e) => setLoginEmail(e.target.value)} dir="ltr" /></div>
+                  <div>
+                    <Label>البريد الإلكتروني أو اسم المستخدم</Label>
+                    <Input required value={loginId} onChange={(e) => setLoginId(e.target.value)} dir="ltr" />
+                  </div>
                   <div><Label>كلمة المرور</Label><Input type="password" required value={loginPwd} onChange={(e) => setLoginPwd(e.target.value)} dir="ltr" /></div>
                   <Button type="submit" className="w-full" disabled={loginLoading}>
                     {loginLoading && <Loader2 className="ml-2 h-4 w-4 animate-spin" />}دخول
@@ -143,7 +146,16 @@ function AuthPage() {
                     </Select>
                   </div>
                   <div><Label>الاسم الكامل</Label><Input required value={fullName} onChange={(e) => setFullName(e.target.value)} /></div>
-                  <div><Label>البريد الإلكتروني</Label><Input type="email" required value={email} onChange={(e) => setEmail(e.target.value)} dir="ltr" /></div>
+                  {signupRole === "doctor" && (
+                    <div><Label>البريد الإلكتروني</Label><Input type="email" required value={email} onChange={(e) => setEmail(e.target.value)} dir="ltr" /></div>
+                  )}
+                  {signupRole === "secretary" && (
+                    <div>
+                      <Label>اسم المستخدم</Label>
+                      <Input required value={username} onChange={(e) => setUsername(e.target.value.replace(/\s+/g, "").toLowerCase())} dir="ltr" placeholder="اختر اسماً للدخول" />
+                      <p className="mt-1 text-xs text-muted-foreground">ستستخدم هذا الاسم لتسجيل الدخول</p>
+                    </div>
+                  )}
                   <div><Label>كلمة المرور</Label><Input type="password" required minLength={6} value={pwd} onChange={(e) => setPwd(e.target.value)} dir="ltr" /></div>
                   <div><Label>رقم الهاتف</Label><Input value={phone} onChange={(e) => setPhone(e.target.value)} dir="ltr" /></div>
                   {signupRole === "doctor" && (
@@ -154,20 +166,9 @@ function AuthPage() {
                   )}
                   {signupRole === "secretary" && (
                     <div>
-                      <Label>الطبيب</Label>
-                      {doctors.length > 0 ? (
-                        <Select value={doctorId} onValueChange={setDoctorId}>
-                          <SelectTrigger><SelectValue placeholder="اختر الطبيب" /></SelectTrigger>
-                          <SelectContent>
-                            {doctors.map((d) => (
-                              <SelectItem key={d.id} value={d.id}>{d.full_name} {d.clinic_name ? `- ${d.clinic_name}` : ""}</SelectItem>
-                            ))}
-                          </SelectContent>
-                        </Select>
-                      ) : (
-                        <Input placeholder="معرف الطبيب (UUID)" value={doctorId} onChange={(e) => setDoctorId(e.target.value)} dir="ltr" />
-                      )}
-                      <p className="mt-1 text-xs text-muted-foreground">سيحتاج حسابك إلى موافقة الطبيب</p>
+                      <Label>معرف الطبيب (8 رموز)</Label>
+                      <Input required maxLength={8} value={doctorCode} onChange={(e) => setDoctorCode(e.target.value.toUpperCase().replace(/[^A-Z0-9]/g, ""))} dir="ltr" className="font-mono tracking-widest text-center uppercase" placeholder="XXXXXXXX" />
+                      <p className="mt-1 text-xs text-muted-foreground">احصل على المعرف من الطبيب — سيحتاج حسابك إلى موافقته</p>
                     </div>
                   )}
                   {signupRole === "doctor" && (
