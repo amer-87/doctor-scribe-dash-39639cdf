@@ -1,5 +1,8 @@
 {
   "name": "tanstack_start_ts",
+  "version": "1.0.0",
+  "description": "Desktop application for clinic management and prescriptions.",
+  "author": "ClinicApp",
   "private": true,
   "sideEffects": false,
   "type": "module",
@@ -11,19 +14,19 @@
     "preview": "vite preview",
     "lint": "eslint .",
     "format": "prettier --write .",
-    "electron:dev": "electron .",
-    "electron:build:win": "electron-packager . ClinicApp --platform=win32 --arch=x64 --out=electron-release --overwrite --icon=electron/icon.ico --app-version=1.0.0 --executable-name=ClinicApp",
-    "electron:build:linux": "electron-packager . ClinicApp --platform=linux --arch=x64 --out=electron-release --overwrite",
-    "electron:installer:win": "electron-builder --win --x64"
+    "electron:dev": "npm run build && electron .",
+    "electron:build:win": "npm run build && electron-packager . ClinicApp --platform=win32 --arch=x64 --out=electron-release --overwrite --icon=public/icon-512.ico --app-version=1.0.0 --executable-name=ClinicApp",
+    "electron:build:linux": "npm run build && electron-packager . ClinicApp --platform=linux --arch=x64 --out=electron-release --overwrite --icon=public/icon-512.png",
+    "electron:installer:win": "npm run build && powershell -NoProfile -Command \"Copy-Item public/icon-512.ico C:/temp/clinicapp.ico -Force; electron-builder --win --x64 --config.win.icon=C:/temp/clinicapp.ico\""
   },
   "build": {
     "appId": "com.clinic.app",
     "productName": "ClinicApp",
-    "files": ["electron/**/*", "package.json"],
+    "files": ["electron/**/*", "dist/**/*", "package.json"],
     "directories": { "output": "electron-release" },
     "win": {
       "target": ["nsis"],
-      "icon": "electron/icon.ico"
+      "icon": "public/icon-512.ico"
     },
     "nsis": {
       "oneClick": false,
