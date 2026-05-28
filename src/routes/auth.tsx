@@ -11,6 +11,8 @@ import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@
 import { toast } from "sonner";
 import { Stethoscope, Loader2 } from "lucide-react";
 
+const WHATSAPP_CONTACT_URL = "https://wa.me/07717119882";
+
 export const Route = createFileRoute("/auth")({ component: AuthPage });
 
 const USERNAME_DOMAIN = "clinic.local";
@@ -129,6 +131,11 @@ function AuthPage() {
                   <div><Label>كلمة المرور</Label><Input type="password" required value={loginPwd} onChange={(e) => setLoginPwd(e.target.value)} dir="ltr" /></div>
                   <Button type="submit" className="w-full" disabled={loginLoading}>
                     {loginLoading && <Loader2 className="ml-2 h-4 w-4 animate-spin" />}دخول
+                  </Button>
+                  <Button asChild variant="outline" className="w-full">
+                    <a href={WHATSAPP_CONTACT_URL} target="_blank" rel="noreferrer">
+                      راسلنا عبر واتساب
+                    </a>
                   </Button>
                 </form>
               </TabsContent>
