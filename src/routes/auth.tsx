@@ -9,9 +9,9 @@ import { Button } from "@/components/ui/button";
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
 import { toast } from "sonner";
-import { Stethoscope, Loader2 } from "lucide-react";
+import { Stethoscope, Loader2, MessageCircle } from "lucide-react";
 
-const WHATSAPP_CONTACT_URL = "https://wa.me/07717119882";
+const WHATSAPP_CONTACT_URL = "https://wa.me/9647717119882";
 
 export const Route = createFileRoute("/auth")({ component: AuthPage });
 
