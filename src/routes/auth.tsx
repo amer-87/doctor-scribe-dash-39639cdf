@@ -132,8 +132,9 @@ function AuthPage() {
                   <Button type="submit" className="w-full" disabled={loginLoading}>
                     {loginLoading && <Loader2 className="ml-2 h-4 w-4 animate-spin" />}دخول
                   </Button>
-                  <Button asChild variant="outline" className="w-full">
+                  <Button asChild variant="outline" className="w-full bg-[#25D366]/10 border-[#25D366]/40 text-[#128C7E] hover:bg-[#25D366]/20 dark:text-[#25D366]">
                     <a href={WHATSAPP_CONTACT_URL} target="_blank" rel="noreferrer">
+                      <MessageCircle className="ml-2 h-4 w-4" />
                       راسلنا عبر واتساب
                     </a>
                   </Button>
