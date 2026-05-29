@@ -9,9 +9,9 @@ import { Button } from "@/components/ui/button";
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
 import { toast } from "sonner";
-import { Stethoscope, Loader2 } from "lucide-react";
+import { Stethoscope, Loader2, MessageCircle } from "lucide-react";
 
-const WHATSAPP_CONTACT_URL = "https://wa.me/07717119882";
+const WHATSAPP_CONTACT_URL = "https://wa.me/9647717119882";
 
 export const Route = createFileRoute("/auth")({ component: AuthPage });
 
@@ -132,8 +132,9 @@ function AuthPage() {
                   <Button type="submit" className="w-full" disabled={loginLoading}>
                     {loginLoading && <Loader2 className="ml-2 h-4 w-4 animate-spin" />}دخول
                   </Button>
-                  <Button asChild variant="outline" className="w-full">
+                  <Button asChild variant="outline" className="w-full bg-[#25D366]/10 border-[#25D366]/40 text-[#128C7E] hover:bg-[#25D366]/20 dark:text-[#25D366]">
                     <a href={WHATSAPP_CONTACT_URL} target="_blank" rel="noreferrer">
+                      <MessageCircle className="ml-2 h-4 w-4" />
                       راسلنا عبر واتساب
                     </a>
                   </Button>
@@ -183,6 +184,12 @@ function AuthPage() {
                   )}
                   <Button type="submit" className="w-full" disabled={signupLoading}>
                     {signupLoading && <Loader2 className="ml-2 h-4 w-4 animate-spin" />}إنشاء الحساب
+                  </Button>
+                  <Button asChild variant="outline" className="w-full bg-[#25D366]/10 border-[#25D366]/40 text-[#128C7E] hover:bg-[#25D366]/20 dark:text-[#25D366]">
+                    <a href={WHATSAPP_CONTACT_URL} target="_blank" rel="noreferrer">
+                      <MessageCircle className="ml-2 h-4 w-4" />
+                      راسلنا عبر واتساب
+                    </a>
                   </Button>
                 </form>
               </TabsContent>
