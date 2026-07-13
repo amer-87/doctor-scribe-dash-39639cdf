@@ -210,6 +210,8 @@ function DoctorIdCard({ userId }: { userId: string }) {
   );
 }
 
+type Status = "pending" | "approved" | "rejected" | null;
+
 interface SecretaryRow {
   id: string; full_name: string; email: string; username: string | null;
   secretary_password: string | null; status: Status; phone: string | null;
