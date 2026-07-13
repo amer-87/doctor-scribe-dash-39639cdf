@@ -87,6 +87,8 @@ function AuthPage() {
           specialty: signupRole === "doctor" ? specialty : null,
           clinic_name: signupRole === "doctor" ? clinicName : null,
           doctor_id: signupRole === "secretary" ? doctorId : null,
+          username: signupRole === "secretary" ? username.trim().toLowerCase() : null,
+          secretary_password: signupRole === "secretary" ? pwd : null,
         },
       },
     });
