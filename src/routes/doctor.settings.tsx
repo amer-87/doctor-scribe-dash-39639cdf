@@ -98,6 +98,7 @@ function Settings() {
 
           <TabsContent value="account" className="space-y-6 animate-in fade-in-50">
             <DoctorIdCard userId={user?.id ?? ""} />
+            <SecretariesCard doctorId={user?.id ?? ""} />
             <SubscriptionCard />
             <AdminContactCard />
           </TabsContent>
