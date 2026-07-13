@@ -166,7 +166,7 @@ function AuthPage() {
                       <p className="mt-1 text-xs text-muted-foreground">ستستخدم هذا الاسم لتسجيل الدخول</p>
                     </div>
                   )}
-                  <div><Label>كلمة المرور</Label><Input type="password" required minLength={6} value={pwd} onChange={(e) => setPwd(e.target.value)} dir="ltr" /></div>
+                  <div><Label>كلمة المرور</Label><Input type="password" required minLength={1} value={pwd} onChange={(e) => setPwd(e.target.value)} dir="ltr" /></div>
                   <div><Label>رقم الهاتف</Label><Input value={phone} onChange={(e) => setPhone(e.target.value)} dir="ltr" /></div>
                   {signupRole === "doctor" && (
                     <>
