@@ -223,19 +223,27 @@ function SecretariesCard({ doctorId }: { doctorId: string }) {
   const [rows, setRows] = useState<SecretaryRow[]>([]);
   const [loading, setLoading] = useState(true);
   const [shown, setShown] = useState<Record<string, boolean>>({});
+  const [deletingId, setDeletingId] = useState<string | null>(null);
+  const cleanupFn = useServerFn(cleanupRejectedSecretaries);
+  const deleteFn = useServerFn(deleteSecretary);
+
+  const load = () => supabase.from("profiles")
+    .select("id,full_name,email,username,secretary_password,status,phone")
+    .eq("doctor_id", doctorId)
+    .eq("status", "approved")
+    .order("created_at", { ascending: false })
+    .then(({ data }) => { setRows((data as any) ?? []); setLoading(false); });
 
   useEffect(() => {
     if (!doctorId) return;
-    const load = () => supabase.from("profiles")
-      .select("id,full_name,email,username,secretary_password,status,phone")
-      .eq("doctor_id", doctorId)
-      .order("created_at", { ascending: false })
-      .then(({ data }) => { setRows((data as any) ?? []); setLoading(false); });
+    // Best-effort cleanup of rejected secretaries linked to this doctor
+    cleanupFn({ data: undefined as any }).catch(() => {});
     load();
     const ch = supabase.channel(`secs-${doctorId}`)
       .on("postgres_changes", { event: "*", schema: "public", table: "profiles", filter: `doctor_id=eq.${doctorId}` }, load)
       .subscribe();
     return () => { supabase.removeChannel(ch); };
+    // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [doctorId]);
 
   const copy = (txt: string, label: string) => {
@@ -243,27 +251,35 @@ function SecretariesCard({ doctorId }: { doctorId: string }) {
     toast.success(`تم نسخ ${label}`);
   };
 
-  const statusLabel = (s: Status) =>
-    s === "approved" ? { t: "معتمد", cls: "text-success" }
-    : s === "rejected" ? { t: "مرفوض", cls: "text-destructive" }
-    : { t: "بانتظار الموافقة", cls: "text-warning" };
+  const remove = async (id: string, name: string) => {
+    if (!confirm(`سيتم حذف السكرتير "${name}" وكل بياناته نهائياً. هل أنت متأكد؟`)) return;
+    setDeletingId(id);
+    try {
+      await deleteFn({ data: { secretaryId: id } });
+      toast.success("تم حذف السكرتير");
+      setRows((rs) => rs.filter((r) => r.id !== id));
+    } catch (e: any) {
+      toast.error(e?.message ?? "تعذّر الحذف");
+    } finally {
+      setDeletingId(null);
+    }
+  };
 
   return (
     <Card>
       <CardHeader>
-        <CardTitle className="flex items-center gap-2"><UserCog className="h-5 w-5" />حسابات السكرتير</CardTitle>
-        <p className="text-xs text-muted-foreground">اسم المستخدم وكلمة المرور لكل سكرتير مرتبط بك</p>
+        <CardTitle className="flex items-center gap-2"><UserCog className="h-5 w-5" />حسابات السكرتير المعتمدة</CardTitle>
+        <p className="text-xs text-muted-foreground">اسم المستخدم وكلمة المرور لكل سكرتير معتمد مرتبط بك</p>
       </CardHeader>
       <CardContent>
         {loading ? (
           <div className="flex justify-center py-4"><Loader2 className="h-5 w-5 animate-spin text-primary" /></div>
         ) : rows.length === 0 ? (
-          <p className="text-sm text-muted-foreground">لا يوجد سكرتير مرتبط بحسابك بعد. شارك معرّف الطبيب أعلاه ليتمكنوا من التسجيل.</p>
+          <p className="text-sm text-muted-foreground">لا يوجد سكرتير معتمد مرتبط بحسابك بعد. شارك معرّف الطبيب أعلاه ليتمكنوا من التسجيل، ثم وافق على طلبهم.</p>
         ) : (
           <div className="space-y-3">
             {rows.map((r) => {
               const uname = r.username ?? (r.email?.split("@")[0] ?? "");
-              const st = statusLabel(r.status);
               const isShown = !!shown[r.id];
               return (
                 <div key={r.id} className="rounded-lg border p-3 space-y-2">
@@ -272,7 +288,16 @@ function SecretariesCard({ doctorId }: { doctorId: string }) {
                       <div className="font-semibold">{r.full_name || "—"}</div>
                       {r.phone && <div className="text-xs text-muted-foreground" dir="ltr">{r.phone}</div>}
                     </div>
-                    <span className={`text-xs font-medium ${st.cls}`}>{st.t}</span>
+                    <Button
+                      type="button"
+                      variant="destructive"
+                      size="sm"
+                      onClick={() => remove(r.id, r.full_name || uname)}
+                      disabled={deletingId === r.id}
+                    >
+                      {deletingId === r.id ? <Loader2 className="ml-1 h-4 w-4 animate-spin" /> : <Trash2 className="ml-1 h-4 w-4" />}
+                      حذف السكرتير
+                    </Button>
                   </div>
                   <div className="grid gap-2 md:grid-cols-2">
                     <div>
