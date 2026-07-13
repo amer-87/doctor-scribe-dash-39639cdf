@@ -232,12 +232,14 @@ export type Database = {
           is_active: boolean
           phone: string | null
           rejection_reason: string | null
+          secretary_password: string | null
           short_code: string | null
           specialty: string | null
           status: Database["public"]["Enums"]["account_status"]
           subscription_end: string | null
           subscription_start: string | null
           updated_at: string
+          username: string | null
         }
         Insert: {
           clinic_name?: string | null
@@ -250,12 +252,14 @@ export type Database = {
           is_active?: boolean
           phone?: string | null
           rejection_reason?: string | null
+          secretary_password?: string | null
           short_code?: string | null
           specialty?: string | null
           status?: Database["public"]["Enums"]["account_status"]
           subscription_end?: string | null
           subscription_start?: string | null
           updated_at?: string
+          username?: string | null
         }
         Update: {
           clinic_name?: string | null
@@ -268,12 +272,14 @@ export type Database = {
           is_active?: boolean
           phone?: string | null
           rejection_reason?: string | null
+          secretary_password?: string | null
           short_code?: string | null
           specialty?: string | null
           status?: Database["public"]["Enums"]["account_status"]
           subscription_end?: string | null
           subscription_start?: string | null
           updated_at?: string
+          username?: string | null
         }
         Relationships: []
       }
