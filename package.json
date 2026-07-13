@@ -23,7 +23,9 @@
     "appId": "com.clinic.app",
     "productName": "ClinicApp",
     "files": ["electron/**/*", "dist/**/*", "package.json"],
-    "directories": { "output": "electron-release" },
+    "directories": {
+      "output": "electron-release"
+    },
     "win": {
       "target": ["nsis"],
       "icon": "public/icon-512.ico"
@@ -79,6 +81,7 @@
     "embla-carousel-react": "^8.6.0",
     "input-otp": "^1.4.2",
     "lucide-react": "^0.575.0",
+    "nitro": "3.0.260603-beta",
     "qrcode.react": "^4.2.0",
     "react": "^19.2.0",
     "react-day-picker": "^9.14.0",
@@ -96,7 +99,7 @@
   },
   "devDependencies": {
     "@eslint/js": "^9.32.0",
-    "@lovable.dev/vite-tanstack-config": "^1.7.0",
+    "@lovable.dev/vite-tanstack-config": "2.7.1",
     "@types/node": "^22.16.5",
     "@types/react": "^19.2.0",
     "@types/react-dom": "^19.2.0",
