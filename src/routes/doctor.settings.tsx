@@ -210,6 +210,104 @@ function DoctorIdCard({ userId }: { userId: string }) {
   );
 }
 
+interface SecretaryRow {
+  id: string; full_name: string; email: string; username: string | null;
+  secretary_password: string | null; status: Status; phone: string | null;
+}
+
+function SecretariesCard({ doctorId }: { doctorId: string }) {
+  const [rows, setRows] = useState<SecretaryRow[]>([]);
+  const [loading, setLoading] = useState(true);
+  const [shown, setShown] = useState<Record<string, boolean>>({});
+
+  useEffect(() => {
+    if (!doctorId) return;
+    const load = () => supabase.from("profiles")
+      .select("id,full_name,email,username,secretary_password,status,phone")
+      .eq("doctor_id", doctorId)
+      .order("created_at", { ascending: false })
+      .then(({ data }) => { setRows((data as any) ?? []); setLoading(false); });
+    load();
+    const ch = supabase.channel(`secs-${doctorId}`)
+      .on("postgres_changes", { event: "*", schema: "public", table: "profiles", filter: `doctor_id=eq.${doctorId}` }, load)
+      .subscribe();
+    return () => { supabase.removeChannel(ch); };
+  }, [doctorId]);
+
+  const copy = (txt: string, label: string) => {
+    navigator.clipboard.writeText(txt);
+    toast.success(`تم نسخ ${label}`);
+  };
+
+  const statusLabel = (s: Status) =>
+    s === "approved" ? { t: "معتمد", cls: "text-success" }
+    : s === "rejected" ? { t: "مرفوض", cls: "text-destructive" }
+    : { t: "بانتظار الموافقة", cls: "text-warning" };
+
+  return (
+    <Card>
+      <CardHeader>
+        <CardTitle className="flex items-center gap-2"><UserCog className="h-5 w-5" />حسابات السكرتير</CardTitle>
+        <p className="text-xs text-muted-foreground">اسم المستخدم وكلمة المرور لكل سكرتير مرتبط بك</p>
+      </CardHeader>
+      <CardContent>
+        {loading ? (
+          <div className="flex justify-center py-4"><Loader2 className="h-5 w-5 animate-spin text-primary" /></div>
+        ) : rows.length === 0 ? (
+          <p className="text-sm text-muted-foreground">لا يوجد سكرتير مرتبط بحسابك بعد. شارك معرّف الطبيب أعلاه ليتمكنوا من التسجيل.</p>
+        ) : (
+          <div className="space-y-3">
+            {rows.map((r) => {
+              const uname = r.username ?? (r.email?.split("@")[0] ?? "");
+              const st = statusLabel(r.status);
+              const isShown = !!shown[r.id];
+              return (
+                <div key={r.id} className="rounded-lg border p-3 space-y-2">
+                  <div className="flex flex-wrap items-center justify-between gap-2">
+                    <div>
+                      <div className="font-semibold">{r.full_name || "—"}</div>
+                      {r.phone && <div className="text-xs text-muted-foreground" dir="ltr">{r.phone}</div>}
+                    </div>
+                    <span className={`text-xs font-medium ${st.cls}`}>{st.t}</span>
+                  </div>
+                  <div className="grid gap-2 md:grid-cols-2">
+                    <div>
+                      <Label className="text-xs">اسم المستخدم</Label>
+                      <div className="flex items-center gap-1">
+                        <Input value={uname} readOnly dir="ltr" className="font-mono text-sm" />
+                        <Button type="button" variant="outline" size="icon" onClick={() => copy(uname, "اسم المستخدم")}><Copy className="h-4 w-4" /></Button>
+                      </div>
+                    </div>
+                    <div>
+                      <Label className="text-xs">كلمة المرور</Label>
+                      <div className="flex items-center gap-1">
+                        <Input
+                          value={r.secretary_password ?? ""}
+                          readOnly
+                          dir="ltr"
+                          type={isShown ? "text" : "password"}
+                          className="font-mono text-sm"
+                          placeholder={r.secretary_password ? "" : "غير متوفر"}
+                        />
+                        <Button type="button" variant="outline" size="icon" onClick={() => setShown((s) => ({ ...s, [r.id]: !s[r.id] }))}>
+                          {isShown ? <EyeOff className="h-4 w-4" /> : <Eye className="h-4 w-4" />}
+                        </Button>
+                        {r.secretary_password && (
+                          <Button type="button" variant="outline" size="icon" onClick={() => copy(r.secretary_password!, "كلمة المرور")}><Copy className="h-4 w-4" /></Button>
+                        )}
+                      </div>
+                    </div>
+                  </div>
+                </div>
+              );
+            })}
+          </div>
+        )}
+      </CardContent>
+    </Card>
+  );
+}
+
 function LogoCard({ form, setForm, userId }: { form: Form; setForm: (f: Form | ((p: Form) => Form)) => void; userId: string }) {
   const fileRef = useRef<HTMLInputElement>(null);
   const [uploading, setUploading] = useState(false);
