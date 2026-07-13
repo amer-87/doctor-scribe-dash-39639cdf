@@ -17,6 +17,8 @@ import {
 } from "lucide-react";
 import { toast } from "sonner";
 import { PrescriptionPreview } from "@/components/PrescriptionPreview";
+import { deleteSecretary, cleanupRejectedSecretaries } from "@/lib/secretaries.functions";
+import { useServerFn } from "@tanstack/react-start";
 
 export const Route = createFileRoute("/doctor/settings")({
   component: () => <RequireAuth allow={["doctor"]}><Settings /></RequireAuth>,
