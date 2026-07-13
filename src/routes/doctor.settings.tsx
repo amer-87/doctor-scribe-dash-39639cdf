@@ -237,7 +237,7 @@ function SecretariesCard({ doctorId }: { doctorId: string }) {
   useEffect(() => {
     if (!doctorId) return;
     // Best-effort cleanup of rejected secretaries linked to this doctor
-    cleanupFn({ data: undefined as any }).catch(() => {});
+    (cleanupFn as any)().catch(() => {});
     load();
     const ch = supabase.channel(`secs-${doctorId}`)
       .on("postgres_changes", { event: "*", schema: "public", table: "profiles", filter: `doctor_id=eq.${doctorId}` }, load)
