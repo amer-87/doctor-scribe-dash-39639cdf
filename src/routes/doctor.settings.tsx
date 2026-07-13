@@ -13,7 +13,7 @@ import { Tabs, TabsList, TabsTrigger, TabsContent } from "@/components/ui/tabs";
 import { Slider } from "@/components/ui/slider";
 import {
   Loader2, Save, Copy, Upload, Trash2, MessageCircle, CalendarClock,
-  Building2, Palette, Eye, BadgeCheck,
+  Building2, Palette, Eye, EyeOff, BadgeCheck, UserCog,
 } from "lucide-react";
 import { toast } from "sonner";
 import { PrescriptionPreview } from "@/components/PrescriptionPreview";
