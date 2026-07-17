@@ -116,23 +116,28 @@ function PrescriptionPage() {
   const isDone = patient.status === "done";
 
   return (
-    <div className="min-h-screen bg-background">
+    <div className="min-h-[180px] bg-background">
       <AppHeader />
       <style>{`
-        @page { size: A4 portrait; margin: 12mm; }
+   @page {
+  size: A5 portrait;
+  margin: 5mm;
+}
         @media print {
           html, body { background: #fff !important; }
           body * { visibility: hidden; }
           .print-area, .print-area * { visibility: visible; }
           .print-area {
             position: absolute; left: 0; top: 0; right: 0;
-            width: 100%;
-            max-width: 186mm;
-            margin: 0 auto;
+         width: 100%;
+max-width: none;
+margin: 0 auto;
             box-shadow: none !important;
             border: none !important;
             -webkit-print-color-adjust: exact;
             print-color-adjust: exact;
+             page-break-inside: avoid;
+    break-inside: avoid;
           }
           .no-print { display: none !important; }
         }
@@ -182,7 +187,7 @@ function PrescriptionPage() {
           )}
 
           <div
-            className="relative p-5"
+            className="relative p-3"
             style={{ background: `linear-gradient(135deg, ${t.header}, ${t.accent})`, color: "#ffffff" }}
           >
             <div className="grid grid-cols-3 items-center gap-3">
@@ -191,15 +196,15 @@ function PrescriptionPage() {
                   <img
                     src={settings.logo_url}
                     alt="logo"
-                    className="h-20 w-20 object-contain"
+                    className="h-14 w-14 object-contain"
                     style={{ filter: "drop-shadow(0 2px 4px rgba(0,0,0,0.25))" }}
                   />
                 )}
               </div>
               <div className="text-center">
                 <div className="text-[10px] uppercase tracking-widest opacity-75">Doctor</div>
-                <div className="text-2xl font-extrabold leading-tight">د. {settings?.doctor_name || "—"}</div>
-                <div className="mt-1 space-y-0.5 text-sm opacity-90">
+                <div className="text-lg font-extrabold leading-tight">د. {settings?.doctor_name || "—"}</div>
+                <div className="mt-1 space-y-0 text-xs opacity-90">
                   {splitSpecialty(settings?.specialty || "", 4).map((l, i) => (
                     <div key={i}>{l}</div>
                   ))}
@@ -213,15 +218,13 @@ function PrescriptionPage() {
           </div>
 
           <div
-            className="grid grid-cols-2 gap-3 border-b p-4 md:grid-cols-4"
+className="grid grid-cols-4 gap-2 border-b p-2"
             style={{ background: `${t.accent}10`, borderColor: `${t.accent}30` }}
           >
             <Info label="المراجع" value={
               <span className="inline-flex items-center gap-2">
                 {patient.full_name}
-                <span className="inline-flex items-center rounded-md border border-primary/40 bg-primary/10 px-2 py-0.5 text-xs font-semibold text-primary">
-                  {(patient.visit_count ?? 1) <= 1 ? "الزيارة الأولى" : `الزيارة رقم ${patient.visit_count}`}
-                </span>
+               
               </span>
             } />
             <Info label="العمر" value={patient.age ?? "—"} />
@@ -229,7 +232,7 @@ function PrescriptionPage() {
             <Info label="الهاتف" value={patient.phone ?? "—"} ltr />
           </div>
 
-          <div className="p-6">
+          <div className="p-3">
             <h3 className="mb-2 text-lg font-bold" style={{ color: t.accent }}>℞ الوصفة الطبية</h3>
 
             <div
@@ -249,14 +252,13 @@ function PrescriptionPage() {
                 onChange={(e) => setBody(e.target.value)}
                 onBlur={() => { void savePrescription(); }}
                 placeholder="Write medications, dosage, instructions..."
-                className="min-h-[480px] resize-none rounded-none border-0 font-mono leading-relaxed focus-visible:ring-0"
-                style={{ background: t.bg, color: t.text, textAlign: "left", fontSize: `${settings?.font_size || 16}px` }}
+className="min-h-[300px] resize-none rounded-none border-0 font-mono leading-relaxed focus-visible:ring-0"                style={{ background: t.bg, color: t.text, textAlign: "left", fontSize: `${settings?.font_size || 16}px` }}
               />
             </div>
           </div>
 
           <div
-            className="relative border-t p-4"
+            className="relative border-t p-2"
             style={{ background: `${t.accent}08`, borderColor: `${t.accent}30` }}
           >
             <div className="flex flex-wrap items-center justify-between gap-4">

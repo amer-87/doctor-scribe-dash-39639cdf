@@ -137,4 +137,5 @@
 /* Print styles are injected per-route to control @page size dynamically */
 @media print {
   .no-print { display: none !important; }
+  
 }
