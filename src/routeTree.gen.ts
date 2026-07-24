@@ -11,6 +11,7 @@
 import { Route as rootRouteImport } from './routes/__root'
 import { Route as SecretaryRouteImport } from './routes/secretary'
 import { Route as PendingRouteImport } from './routes/pending'
+import { Route as McpRouteImport } from './routes/mcp'
 import { Route as AuthRouteImport } from './routes/auth'
 import { Route as AdminRouteImport } from './routes/admin'
 import { Route as AccountRouteImport } from './routes/account'
@@ -19,7 +20,10 @@ import { Route as DoctorIndexRouteImport } from './routes/doctor.index'
 import { Route as VerifyIdRouteImport } from './routes/verify.$id'
 import { Route as DoctorSettingsRouteImport } from './routes/doctor.settings'
 import { Route as DoctorPrintTodayRouteImport } from './routes/doctor.print-today'
+import { Route as Char91DotwellKnownChar93OauthProtectedResourceRouteImport } from './routes/[.well-known]/oauth-protected-resource'
+import { Route as Char91DotmcpChar93ListToolsRouteImport } from './routes/[.mcp]/list-tools'
 import { Route as DoctorPatientIdRouteImport } from './routes/doctor.patient.$id'
+import { Route as Char91DotmcpChar93InvokeToolToolRouteImport } from './routes/[.mcp]/invoke-tool/$tool'
 
 const SecretaryRoute = SecretaryRouteImport.update({
   id: '/secretary',
@@ -29,6 +33,11 @@ const SecretaryRoute = SecretaryRouteImport.update({
 const PendingRoute = PendingRouteImport.update({
   id: '/pending',
   path: '/pending',
+  getParentRoute: () => rootRouteImport,
+} as any)
+const McpRoute = McpRouteImport.update({
+  id: '/mcp',
+  path: '/mcp',
   getParentRoute: () => rootRouteImport,
 } as any)
 const AuthRoute = AuthRouteImport.update({
@@ -71,23 +80,45 @@ const DoctorPrintTodayRoute = DoctorPrintTodayRouteImport.update({
   path: '/doctor/print-today',
   getParentRoute: () => rootRouteImport,
 } as any)
+const Char91DotwellKnownChar93OauthProtectedResourceRoute =
+  Char91DotwellKnownChar93OauthProtectedResourceRouteImport.update({
+    id: '/.well-known/oauth-protected-resource',
+    path: '/.well-known/oauth-protected-resource',
+    getParentRoute: () => rootRouteImport,
+  } as any)
+const Char91DotmcpChar93ListToolsRoute =
+  Char91DotmcpChar93ListToolsRouteImport.update({
+    id: '/.mcp/list-tools',
+    path: '/.mcp/list-tools',
+    getParentRoute: () => rootRouteImport,
+  } as any)
 const DoctorPatientIdRoute = DoctorPatientIdRouteImport.update({
   id: '/doctor/patient/$id',
   path: '/doctor/patient/$id',
   getParentRoute: () => rootRouteImport,
 } as any)
+const Char91DotmcpChar93InvokeToolToolRoute =
+  Char91DotmcpChar93InvokeToolToolRouteImport.update({
+    id: '/.mcp/invoke-tool/$tool',
+    path: '/.mcp/invoke-tool/$tool',
+    getParentRoute: () => rootRouteImport,
+  } as any)
 
 export interface FileRoutesByFullPath {
   '/': typeof IndexRoute
   '/account': typeof AccountRoute
   '/admin': typeof AdminRoute
   '/auth': typeof AuthRoute
+  '/mcp': typeof McpRoute
   '/pending': typeof PendingRoute
   '/secretary': typeof SecretaryRoute
+  '/.mcp/list-tools': typeof Char91DotmcpChar93ListToolsRoute
+  '/.well-known/oauth-protected-resource': typeof Char91DotwellKnownChar93OauthProtectedResourceRoute
   '/doctor/print-today': typeof DoctorPrintTodayRoute
   '/doctor/settings': typeof DoctorSettingsRoute
   '/verify/$id': typeof VerifyIdRoute
   '/doctor/': typeof DoctorIndexRoute
+  '/.mcp/invoke-tool/$tool': typeof Char91DotmcpChar93InvokeToolToolRoute
   '/doctor/patient/$id': typeof DoctorPatientIdRoute
 }
 export interface FileRoutesByTo {
@@ -95,12 +126,16 @@ export interface FileRoutesByTo {
   '/account': typeof AccountRoute
   '/admin': typeof AdminRoute
   '/auth': typeof AuthRoute
+  '/mcp': typeof McpRoute
   '/pending': typeof PendingRoute
   '/secretary': typeof SecretaryRoute
+  '/.mcp/list-tools': typeof Char91DotmcpChar93ListToolsRoute
+  '/.well-known/oauth-protected-resource': typeof Char91DotwellKnownChar93OauthProtectedResourceRoute
   '/doctor/print-today': typeof DoctorPrintTodayRoute
   '/doctor/settings': typeof DoctorSettingsRoute
   '/verify/$id': typeof VerifyIdRoute
   '/doctor': typeof DoctorIndexRoute
+  '/.mcp/invoke-tool/$tool': typeof Char91DotmcpChar93InvokeToolToolRoute
   '/doctor/patient/$id': typeof DoctorPatientIdRoute
 }
 export interface FileRoutesById {
@@ -109,12 +144,16 @@ export interface FileRoutesById {
   '/account': typeof AccountRoute
   '/admin': typeof AdminRoute
   '/auth': typeof AuthRoute
+  '/mcp': typeof McpRoute
   '/pending': typeof PendingRoute
   '/secretary': typeof SecretaryRoute
+  '/.mcp/list-tools': typeof Char91DotmcpChar93ListToolsRoute
+  '/.well-known/oauth-protected-resource': typeof Char91DotwellKnownChar93OauthProtectedResourceRoute
   '/doctor/print-today': typeof DoctorPrintTodayRoute
   '/doctor/settings': typeof DoctorSettingsRoute
   '/verify/$id': typeof VerifyIdRoute
   '/doctor/': typeof DoctorIndexRoute
+  '/.mcp/invoke-tool/$tool': typeof Char91DotmcpChar93InvokeToolToolRoute
   '/doctor/patient/$id': typeof DoctorPatientIdRoute
 }
 export interface FileRouteTypes {
@@ -124,12 +163,16 @@ export interface FileRouteTypes {
     | '/account'
     | '/admin'
     | '/auth'
+    | '/mcp'
     | '/pending'
     | '/secretary'
+    | '/.mcp/list-tools'
+    | '/.well-known/oauth-protected-resource'
     | '/doctor/print-today'
     | '/doctor/settings'
     | '/verify/$id'
     | '/doctor/'
+    | '/.mcp/invoke-tool/$tool'
     | '/doctor/patient/$id'
   fileRoutesByTo: FileRoutesByTo
   to:
@@ -137,12 +180,16 @@ export interface FileRouteTypes {
     | '/account'
     | '/admin'
     | '/auth'
+    | '/mcp'
     | '/pending'
     | '/secretary'
+    | '/.mcp/list-tools'
+    | '/.well-known/oauth-protected-resource'
     | '/doctor/print-today'
     | '/doctor/settings'
     | '/verify/$id'
     | '/doctor'
+    | '/.mcp/invoke-tool/$tool'
     | '/doctor/patient/$id'
   id:
     | '__root__'
@@ -150,12 +197,16 @@ export interface FileRouteTypes {
     | '/account'
     | '/admin'
     | '/auth'
+    | '/mcp'
     | '/pending'
     | '/secretary'
+    | '/.mcp/list-tools'
+    | '/.well-known/oauth-protected-resource'
     | '/doctor/print-today'
     | '/doctor/settings'
     | '/verify/$id'
     | '/doctor/'
+    | '/.mcp/invoke-tool/$tool'
     | '/doctor/patient/$id'
   fileRoutesById: FileRoutesById
 }
@@ -164,12 +215,16 @@ export interface RootRouteChildren {
   AccountRoute: typeof AccountRoute
   AdminRoute: typeof AdminRoute
   AuthRoute: typeof AuthRoute
+  McpRoute: typeof McpRoute
   PendingRoute: typeof PendingRoute
   SecretaryRoute: typeof SecretaryRoute
+  Char91DotmcpChar93ListToolsRoute: typeof Char91DotmcpChar93ListToolsRoute
+  Char91DotwellKnownChar93OauthProtectedResourceRoute: typeof Char91DotwellKnownChar93OauthProtectedResourceRoute
   DoctorPrintTodayRoute: typeof DoctorPrintTodayRoute
   DoctorSettingsRoute: typeof DoctorSettingsRoute
   VerifyIdRoute: typeof VerifyIdRoute
   DoctorIndexRoute: typeof DoctorIndexRoute
+  Char91DotmcpChar93InvokeToolToolRoute: typeof Char91DotmcpChar93InvokeToolToolRoute
   DoctorPatientIdRoute: typeof DoctorPatientIdRoute
 }
 
@@ -187,6 +242,13 @@ declare module '@tanstack/react-router' {
       path: '/pending'
       fullPath: '/pending'
       preLoaderRoute: typeof PendingRouteImport
+      parentRoute: typeof rootRouteImport
+    }
+    '/mcp': {
+      id: '/mcp'
+      path: '/mcp'
+      fullPath: '/mcp'
+      preLoaderRoute: typeof McpRouteImport
       parentRoute: typeof rootRouteImport
     }
     '/auth': {
@@ -245,11 +307,32 @@ declare module '@tanstack/react-router' {
       preLoaderRoute: typeof DoctorPrintTodayRouteImport
       parentRoute: typeof rootRouteImport
     }
+    '/.well-known/oauth-protected-resource': {
+      id: '/.well-known/oauth-protected-resource'
+      path: '/.well-known/oauth-protected-resource'
+      fullPath: '/.well-known/oauth-protected-resource'
+      preLoaderRoute: typeof Char91DotwellKnownChar93OauthProtectedResourceRouteImport
+      parentRoute: typeof rootRouteImport
+    }
+    '/.mcp/list-tools': {
+      id: '/.mcp/list-tools'
+      path: '/.mcp/list-tools'
+      fullPath: '/.mcp/list-tools'
+      preLoaderRoute: typeof Char91DotmcpChar93ListToolsRouteImport
+      parentRoute: typeof rootRouteImport
+    }
     '/doctor/patient/$id': {
       id: '/doctor/patient/$id'
       path: '/doctor/patient/$id'
       fullPath: '/doctor/patient/$id'
       preLoaderRoute: typeof DoctorPatientIdRouteImport
+      parentRoute: typeof rootRouteImport
+    }
+    '/.mcp/invoke-tool/$tool': {
+      id: '/.mcp/invoke-tool/$tool'
+      path: '/.mcp/invoke-tool/$tool'
+      fullPath: '/.mcp/invoke-tool/$tool'
+      preLoaderRoute: typeof Char91DotmcpChar93InvokeToolToolRouteImport
       parentRoute: typeof rootRouteImport
     }
   }
@@ -260,12 +343,17 @@ const rootRouteChildren: RootRouteChildren = {
   AccountRoute: AccountRoute,
   AdminRoute: AdminRoute,
   AuthRoute: AuthRoute,
+  McpRoute: McpRoute,
   PendingRoute: PendingRoute,
   SecretaryRoute: SecretaryRoute,
+  Char91DotmcpChar93ListToolsRoute: Char91DotmcpChar93ListToolsRoute,
+  Char91DotwellKnownChar93OauthProtectedResourceRoute:
+    Char91DotwellKnownChar93OauthProtectedResourceRoute,
   DoctorPrintTodayRoute: DoctorPrintTodayRoute,
   DoctorSettingsRoute: DoctorSettingsRoute,
   VerifyIdRoute: VerifyIdRoute,
   DoctorIndexRoute: DoctorIndexRoute,
+  Char91DotmcpChar93InvokeToolToolRoute: Char91DotmcpChar93InvokeToolToolRoute,
   DoctorPatientIdRoute: DoctorPatientIdRoute,
 }
 export const routeTree = rootRouteImport

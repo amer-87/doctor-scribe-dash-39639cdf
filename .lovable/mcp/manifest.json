@@ -1,0 +1,164 @@
+{
+  "version": 1,
+  "sdk_version": "0.24.0",
+  "path": "/mcp",
+  "auth": {
+    "type": "oauth",
+    "issuer": "https://iwraqcaqtogjzmihwnkp.supabase.co/auth/v1",
+    "accepted_audiences": [
+      "authenticated"
+    ]
+  },
+  "mcp": {
+    "server": {
+      "name": "my-clinic-mcp",
+      "version": "0.1.0",
+      "title": "My Clinic MCP"
+    },
+    "tools": [
+      {
+        "name": "list_patients",
+        "title": "List patients",
+        "description": "List the signed-in doctor's patients, most recently updated first. Returns id, full name, phone, appointment date and status.",
+        "annotations": {
+          "readOnlyHint": true,
+          "idempotentHint": true,
+          "openWorldHint": false
+        },
+        "inputSchema": {
+          "$schema": "http://json-schema.org/draft-07/schema#",
+          "type": "object",
+          "properties": {
+            "limit": {
+              "anyOf": [
+                {
+                  "type": "integer",
+                  "minimum": 1,
+                  "maximum": 100
+                },
+                {
+                  "type": "null"
+                }
+              ],
+              "description": "Max rows to return (default 25)."
+            },
+            "status": {
+              "anyOf": [
+                {
+                  "type": "string"
+                },
+                {
+                  "type": "null"
+                }
+              ],
+              "description": "Filter by status (e.g. 'pending', 'done'). Null for all."
+            }
+          },
+          "required": [
+            "limit",
+            "status"
+          ]
+        },
+        "outputSchema": null
+      },
+      {
+        "name": "get_patient",
+        "title": "Get patient",
+        "description": "Get a single patient's full record by id (only accessible to the owning doctor).",
+        "annotations": {
+          "readOnlyHint": true,
+          "idempotentHint": true,
+          "openWorldHint": false
+        },
+        "inputSchema": {
+          "$schema": "http://json-schema.org/draft-07/schema#",
+          "type": "object",
+          "properties": {
+            "id": {
+              "type": "string",
+              "format": "uuid",
+              "pattern": "^([0-9a-fA-F]{8}-[0-9a-fA-F]{4}-[1-8][0-9a-fA-F]{3}-[89abAB][0-9a-fA-F]{3}-[0-9a-fA-F]{12}|00000000-0000-0000-0000-000000000000|ffffffff-ffff-ffff-ffff-ffffffffffff)$",
+              "description": "Patient id (UUID)."
+            }
+          },
+          "required": [
+            "id"
+          ]
+        },
+        "outputSchema": null
+      },
+      {
+        "name": "list_prescriptions",
+        "title": "List prescriptions",
+        "description": "List prescriptions for a given patient, most recent first.",
+        "annotations": {
+          "readOnlyHint": true,
+          "idempotentHint": true,
+          "openWorldHint": false
+        },
+        "inputSchema": {
+          "$schema": "http://json-schema.org/draft-07/schema#",
+          "type": "object",
+          "properties": {
+            "patient_id": {
+              "type": "string",
+              "format": "uuid",
+              "pattern": "^([0-9a-fA-F]{8}-[0-9a-fA-F]{4}-[1-8][0-9a-fA-F]{3}-[89abAB][0-9a-fA-F]{3}-[0-9a-fA-F]{12}|00000000-0000-0000-0000-000000000000|ffffffff-ffff-ffff-ffff-ffffffffffff)$",
+              "description": "Patient id (UUID)."
+            },
+            "limit": {
+              "anyOf": [
+                {
+                  "type": "integer",
+                  "minimum": 1,
+                  "maximum": 50
+                },
+                {
+                  "type": "null"
+                }
+              ],
+              "description": "Max rows to return (default 10)."
+            }
+          },
+          "required": [
+            "patient_id",
+            "limit"
+          ]
+        },
+        "outputSchema": null
+      },
+      {
+        "name": "create_prescription",
+        "title": "Create prescription",
+        "description": "Create a new prescription for a patient owned by the signed-in doctor.",
+        "annotations": {
+          "readOnlyHint": false,
+          "destructiveHint": false,
+          "openWorldHint": false
+        },
+        "inputSchema": {
+          "$schema": "http://json-schema.org/draft-07/schema#",
+          "type": "object",
+          "properties": {
+            "patient_id": {
+              "type": "string",
+              "format": "uuid",
+              "pattern": "^([0-9a-fA-F]{8}-[0-9a-fA-F]{4}-[1-8][0-9a-fA-F]{3}-[89abAB][0-9a-fA-F]{3}-[0-9a-fA-F]{12}|00000000-0000-0000-0000-000000000000|ffffffff-ffff-ffff-ffff-ffffffffffff)$",
+              "description": "Patient id (UUID)."
+            },
+            "content": {
+              "type": "string",
+              "minLength": 1,
+              "description": "Prescription content (medications, dosage, notes)."
+            }
+          },
+          "required": [
+            "patient_id",
+            "content"
+          ]
+        },
+        "outputSchema": null
+      }
+    ]
+  }
+}
