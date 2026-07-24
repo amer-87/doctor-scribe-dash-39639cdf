@@ -18,10 +18,23 @@ export const Route = createFileRoute("/auth")({ component: AuthPage });
 const USERNAME_DOMAIN = "clinic.local";
 const toEmail = (v: string) => v.includes("@") ? v.trim() : `${v.trim().toLowerCase()}@${USERNAME_DOMAIN}`;
 
+function getNext(): string | null {
+  if (typeof window === "undefined") return null;
+  const n = new URLSearchParams(window.location.search).get("next");
+  if (!n || !n.startsWith("/") || n.startsWith("//")) return null;
+  return n;
+}
+
 function AuthPage() {
   const { session, loading: authLoading } = useAuth();
   const nav = useNavigate();
-  useEffect(() => { if (!authLoading && session) nav({ to: "/" }); }, [session, authLoading, nav]);
+  useEffect(() => {
+    if (!authLoading && session) {
+      const next = getNext();
+      if (next) { window.location.href = next; return; }
+      nav({ to: "/" });
+    }
+  }, [session, authLoading, nav]);
 
   // Login state (email OR username)
   const [loginId, setLoginId] = useState("");
